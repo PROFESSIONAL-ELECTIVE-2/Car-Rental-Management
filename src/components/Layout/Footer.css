@@ -1,14 +1,14 @@
 .footer {
-    background-color: #1f2937; /* Dark modern gray */
+    background-color: #1f2937; 
     color: #f9fafb;
     padding: 3rem 1rem 1rem;
-    margin-top: auto; /* Pushes the footer to the bottom of the page */
+    margin-top: auto; 
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .footer-content {
     display: flex;
-    flex-wrap: wrap; /* Makes it stack neatly on mobile phones */
+    flex-wrap: wrap; 
     justify-content: space-around;
     max-width: 1200px;
     margin: 0 auto;
@@ -17,13 +17,13 @@
 
 .footer-section {
     flex: 1;
-    min-width: 250px; /* Prevents columns from getting too squished */
+    min-width: 250px; 
 }
 
 .footer-section h3 {
     font-size: 1.25rem;
     margin-bottom: 1rem;
-    color: #3b82f6; /* Brand blue color */
+    color: #3b82f6; 
 }
 
 .footer-section p {
@@ -56,7 +56,7 @@
     text-align: center;
     padding-top: 2rem;
     margin-top: 2rem;
-    border-top: 1px solid #374151; /* Subtle dividing line */
+    border-top: 1px solid #374151; 
     color: #9ca3af;
     font-size: 0.9rem;
 }

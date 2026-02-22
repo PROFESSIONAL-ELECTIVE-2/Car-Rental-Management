@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom'; // Use Link for instant page switching
+import { Link } from 'react-router-dom'; 
 import './Header.css';
 
 function Header() {
@@ -17,7 +17,6 @@ function Header() {
                         <li><Link to="/about">About</Link></li>
                     </ul>
                 </nav>
-
                 <div className="header-actions">
                     <Link to="/contact" className="contact-link">Contact Support</Link>
                     <button className="btn-book-now">Book Now</button>

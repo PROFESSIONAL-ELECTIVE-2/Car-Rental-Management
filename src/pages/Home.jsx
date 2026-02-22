@@ -11,8 +11,6 @@ function Home() {
                 <p>Business Desc.</p>
                 <Button /> 
             </section>
-
-            
             <section className="featured-section">
                 <h2>Featured Vehicles</h2>
                 <div className="car-grid">

@@ -1,0 +1,62 @@
+.footer {
+    background-color: #1f2937; /* Dark modern gray */
+    color: #f9fafb;
+    padding: 3rem 1rem 1rem;
+    margin-top: auto; /* Pushes the footer to the bottom of the page */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.footer-content {
+    display: flex;
+    flex-wrap: wrap; /* Makes it stack neatly on mobile phones */
+    justify-content: space-around;
+    max-width: 1200px;
+    margin: 0 auto;
+    gap: 2rem;
+}
+
+.footer-section {
+    flex: 1;
+    min-width: 250px; /* Prevents columns from getting too squished */
+}
+
+.footer-section h3 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    color: #3b82f6; /* Brand blue color */
+}
+
+.footer-section p {
+    line-height: 1.6;
+    color: #d1d5db;
+}
+
+.footer-section ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.footer-section ul li {
+    margin-bottom: 0.5rem;
+}
+
+.footer-section a {
+    color: #d1d5db;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.footer-section a:hover {
+    color: #ffffff;
+    text-decoration: underline;
+}
+
+.footer-bottom {
+    text-align: center;
+    padding-top: 2rem;
+    margin-top: 2rem;
+    border-top: 1px solid #374151; /* Subtle dividing line */
+    color: #9ca3af;
+    font-size: 0.9rem;
+}

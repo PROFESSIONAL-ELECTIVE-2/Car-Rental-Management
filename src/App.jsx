@@ -1,19 +1,27 @@
-import { BrowserRouter as Router } from 'react-router-dom';
-import Header from './components/Layout/Header.jsx'; // Corrected import path and type
-import Footer from './components/Layout/Footer.jsx'
-import Card from './features/Card.jsx'
-import Button from './components/Commons/Button.jsx'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Header from './components/Layout/Header.jsx';
+import Footer from './components/Layout/Footer.jsx';
+import Home from './pages/Home.jsx'; // Import the new Home page
 
 function App() {
   return (
     <Router>
-      <Header />
-      <main style={{ padding: '20px' }}>
-        <h2>The Header is working!</h2>
-      </main>
-      <Footer />
-      <Card />
-      <Button />
+      {/* Wrapper to ensure Footer stays at the bottom */}
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        
+        <Header />
+        
+        {/* Main content area expands to fill space */}
+        <main style={{ flex: 1 }}>
+          <Routes>
+            {/* The Home component will show when you are on the "/" URL */}
+            <Route path="/" element={<Home />} />
+          </Routes>
+        </main>
+
+        <Footer />
+        
+      </div>
     </Router>
   );
 }

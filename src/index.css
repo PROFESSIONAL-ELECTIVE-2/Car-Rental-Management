@@ -1,0 +1,17 @@
+/* src/index.css */
+
+/* 1. Global Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* 2. Body Reset */
+body, html {
+  width: 100%;
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow-x: hidden; /* Prevents accidental horizontal scrolling */
+  background-color: #f9fafb; /* Matches your Home page background */
+}

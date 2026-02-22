@@ -1,0 +1,25 @@
+.card {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 1rem;
+    max-width: 300px;
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.card img {
+    width: 100%;
+    border-radius: 4px;
+}
+
+.card-title {
+    font-family: Arial, sans-serif;
+    font-size: 1.5rem;
+    margin: 0.5rem 0;
+}
+
+.card-description {
+    font-family: Arial, sans-serif;
+    font-size: 1rem;
+    color: #555;
+}

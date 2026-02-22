@@ -1,6 +1,8 @@
 import { BrowserRouter as Router } from 'react-router-dom';
-import Header from './components/Layout/Header.jsx';
-import Footer from './components/Layout/Footer.jsx'; 
+import Header from './components/Layout/Header.jsx'; // Corrected import path and type
+import Footer from './components/Layout/Footer.jsx'
+import Card from './features/Card.jsx'
+import Button from './components/Commons/Button.jsx'
 
 function App() {
   return (
@@ -9,8 +11,9 @@ function App() {
       <main style={{ padding: '20px' }}>
         <h2>The Header is working!</h2>
       </main>
-      {/* This is where you use the tag, not in the import above */}
-      <Footer /> 
+      <Footer />
+      <Card />
+      <Button />
     </Router>
   );
 }

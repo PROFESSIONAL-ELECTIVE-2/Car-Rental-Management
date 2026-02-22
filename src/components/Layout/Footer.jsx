@@ -3,7 +3,7 @@ function Footer() {
 
     return(
         <footer>
-            <p>&copy; 2026 Triple R and A. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()}Triple R and A. All rights reserved.</p>
         </footer>
     );
 }

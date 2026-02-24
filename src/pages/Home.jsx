@@ -1,5 +1,5 @@
 import React from 'react';
-import Card from '../features/Card.jsx';
+import CarViewer from '../features/CarModel.jsx'; 
 import Button from '../components/Commons/Button.jsx';
 import './Home.css'; 
 
@@ -8,27 +8,14 @@ function Home() {
         <div className="home-container">
             <section className="hero-section">
                 <h1>Welcome to Triple R and A Car Rental</h1>
-                <p>Business Desc.</p>
+                <p>Experience our fleet in 3D</p>
                 <Button /> 
             </section>
+            
             <section className="featured-section">
-                <h2>Featured Vehicles</h2>
-                <div className="car-grid">
-                    <Card 
-                        title="Car" 
-                        description="Desc."
-                        image="#"
-                    />
-                    <Card 
-                        title="Car2" 
-                        description="Desc."
-                        image="#"
-                    />
-                    <Card 
-                        title="Car3" 
-                        description="Desc"
-                        image="#"
-                    />
+                <h2>Featured 3D Model</h2>
+                <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+                    <CarViewer modelPath="/toyota_fortuner_2021.glb" />
                 </div>
             </section>
         </div>

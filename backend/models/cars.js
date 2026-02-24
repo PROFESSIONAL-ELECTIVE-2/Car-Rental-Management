@@ -7,4 +7,4 @@ const carSchema = new mongoose.Schema({
     type: String, 
 });
 
-export default mongoose.model('Car', carSchema);
+export default mongoose.model('Car', carSchema, 'cars');

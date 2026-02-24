@@ -1,0 +1,50 @@
+.rent-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.rent-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.rent-header h1 {
+    font-size: 2.5rem;
+    color: #1f2937;
+}
+
+.rent-container {
+    display: flex;
+    gap: 2rem;
+}
+
+.filters {
+    flex: 1;
+    min-width: 200px;
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    height: fit-content;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.filters ul {
+    list-style: none;
+    padding: 0;
+    margin-top: 1rem;
+}
+
+.filters li {
+    margin-bottom: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.fleet-grid {
+    flex: 4;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 2rem;
+}

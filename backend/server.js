@@ -35,7 +35,6 @@ app.get('/api/cars', async (req, res) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
-// Add this temporary route to server.js to test data insertion
 app.get('/api/seed', async (req, res) => {
     try {
         const testCar = new Car({

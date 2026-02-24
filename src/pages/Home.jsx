@@ -1,10 +1,9 @@
 import React from 'react';
 import Button from '../components/Commons/Button.jsx';
-import Card from '../features/Card.jsx'; // Import your existing Card component
+import Card from '../features/Card.jsx'; 
 import './Home.css'; 
 
 function Home() {
-    // Sample data for featured cars
     const featuredCars = [
         {
             id: 1,
@@ -28,7 +27,6 @@ function Home() {
 
     return (
         <div className="home-container">
-            {/* Standard Hero Section */}
             <section className="hero-section">
                 <div className="hero-content">
                     <h1>Welcome to Triple R and A Car Rental</h1>
@@ -36,8 +34,6 @@ function Home() {
                     <Button /> 
                 </div>
             </section>
-            
-            {/* Featured Cars Grid */}
             <section className="featured-section">
                 <h2>Our Featured Fleet</h2>
                 <div className="car-grid">

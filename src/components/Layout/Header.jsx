@@ -9,14 +9,15 @@ function Header() {
                 <div className="brand">
                     <Link to="/" className="brand-logo">Triple R & A</Link>
                 </div>
-                <nav className="main-nav">
-                    <ul>
-                        <li><Link to="/">Home</Link></li>
-                        <li><Link to="/fleet">Our Fleet</Link></li>
-                        <li><Link to="/services">Services</Link></li>
-                        <li><Link to="/about">About</Link></li>
-                    </ul>
-                </nav>
+<nav className="main-nav">
+    <ul>
+        <li><Link to="/">Home</Link></li>
+        {/* Update this link to match the route in App.jsx */}
+        <li><Link to="/fleet">Our Fleet</Link></li> 
+        <li><Link to="/services">Services</Link></li>
+        <li><Link to="/about">About</Link></li>
+    </ul>
+</nav>
                 <div className="header-actions">
                     <Link to="/contact" className="contact-link">Contact Support</Link>
                     <button className="btn-book-now">Book Now</button>

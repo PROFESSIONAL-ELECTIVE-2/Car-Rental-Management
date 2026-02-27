@@ -32,20 +32,29 @@ app.get('/api/cars', async (req, res) => {
     }
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
-app.get('/api/seed', async (req, res) => {
+app.post('/api/cars/rent/:id', async (req, res) => {
     try {
-        const testCar = new Car({
-            title: "Test Car",
-            description: "If you see this, the database is working!",
-            image: "2021_Fortuner-1.jpg",
-            type: "SUV"
-        });
-        await testCar.save();
-        res.send("Test car added successfully! Now refresh /api/cars");
+        const car = await Car.findById(req.params.id);
+        
+        if (!car) {
+            return res.status(404).json({ message: "Car not found" });
+        }
+
+        if (car.stock <= 0) {
+            return res.status(400).json({ message: "Out of stock" });
+        }
+
+        // Decrease stock by 1
+        car.stock -= 1;
+        await car.save();
+
+        res.json({ message: "Rental successful!", updatedCar: car });
     } catch (err) {
-        res.status(500).send(err.message);
+        console.error(err);
+        res.status(500).json({ message: "Server Error: Could not process rental." });
     }
 });
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

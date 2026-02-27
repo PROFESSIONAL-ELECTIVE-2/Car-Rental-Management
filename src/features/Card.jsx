@@ -1,7 +1,7 @@
 import React from 'react';
 import './Card.css';
 
-function Card({ title, description, image, type, stock }) {
+function Card({ id, title, description, image, type, stock, onRent }) {
     return (
         <div className="card">
             <div className="card-image-container">
@@ -11,11 +11,16 @@ function Card({ title, description, image, type, stock }) {
             <div className="card-content">
                 <h3 className="card-title">{title}</h3>
                 <p className="card-description">{description}</p>
-                {/* Displaying stock count from database */}
                 <p className="card-stock">
                     <strong>Available Units:</strong> {stock || 0}
                 </p>
-                <button className="rent-button">Rent Now</button>
+                <button 
+                    className="rent-button" 
+                    onClick={() => onRent(id)}
+                    disabled={stock <= 0}
+                >
+                    {stock > 0 ? "Rent Now" : "Out of Stock"}
+                </button>
             </div>
         </div>
     );

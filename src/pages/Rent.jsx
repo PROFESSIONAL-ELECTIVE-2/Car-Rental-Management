@@ -1,65 +1,65 @@
 import React, { useState, useEffect } from 'react';
 import Card from '../features/Card.jsx';
+import RentModal from '../features/RentModal.jsx'; 
 import './Rent.css';
 
 function Rent() {
     const [cars, setCars] = useState([]);
+    const [selectedCar, setSelectedCar] = useState(null); 
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
 
     useEffect(() => {
-        // Fetching data from the backend connected to car_rental database
         fetch('http://localhost:5000/api/cars')
-            .then(res => {
-                if (!res.ok) throw new Error('Failed to fetch car data');
-                return res.json();
-            })
+            .then(res => res.json())
             .then(data => {
                 setCars(data);
-                setLoading(false);
-            })
-            .catch(err => {
-                setError(err.message);
                 setLoading(false);
             });
     }, []);
 
+    const openModal = (car) => {
+        setSelectedCar(car);
+    };
+
+    const handleRentConfirm = async (carId, details) => {
+        try {
+            const response = await fetch(`http://localhost:5000/api/cars/rent/${carId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(details) 
+            });
+
+            if (response.ok) {
+                setCars(prev => prev.map(c => 
+                    c._id === carId ? { ...c, stock: c.stock - 1 } : c
+                ));
+                alert(`Success! ${details.userName}, your rental is confirmed.`);
+                setSelectedCar(null); 
+            }
+        } catch (err) {
+            alert("Error processing rental.");
+        }
+    };
+
     return (
         <div className="rent-page">
-            <header className="rent-header">
-                <h1>Our Rental Fleet</h1>
-                <p>Choose the perfect vehicle for your next journey.</p>
-            </header>
-            
-            <div className="rent-container">
-                <aside className="filters">
-                    <h3>Filter by Type</h3>
-                    <ul>
-                        <li><input type="checkbox" id="suv" /> <label htmlFor="suv">SUV</label></li>
-                        <li><input type="checkbox" id="mpv" /> <label htmlFor="mpv">MPV</label></li>
-                        <li><input type="checkbox" id="vans" /> <label htmlFor="vans">Vans</label></li>
-                        <li><input type="checkbox" id="sedan" /> <label htmlFor="sedan">Sedan</label></li>
-                    </ul>
-                </aside>
+            <main className="fleet-grid">
+                {cars.map(car => (
+                    <Card 
+                        key={car._id} 
+                        {...car} 
+                        onRent={() => openModal(car)} 
+                    />
+                ))}
+            </main>
 
-                <main className="fleet-grid">
-                    {loading && <p>Loading fleet...</p>}
-                    {error && <p className="error-message">Error: {error}</p>}
-                    
-                    {!loading && !error && cars.map(car => (
-                        <Card 
-                            key={car._id} 
-                            title={car.title} 
-                            description={car.description} 
-                            image={car.image}
-                            type={car.type}
-                            stock={car.stock} // Pass stock to the Card component
-                        />
-                    ))}
-                    
-                    {!loading && cars.length === 0 && <p>No vehicles available at the moment.</p>}
-                </main>
-            </div>
+            {selectedCar && (
+                <RentModal 
+                    car={selectedCar} 
+                    onClose={() => setSelectedCar(null)} 
+                    onConfirm={handleRentConfirm}
+                />
+            )}
         </div>
     );
 }

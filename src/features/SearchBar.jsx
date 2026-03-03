@@ -11,7 +11,6 @@ function SearchBar({ value, onChange, placeholder = "Search for a car..." }) {
           className="search-input"
           placeholder={placeholder}
           value={value} 
-          // This sends the input value back to Rent.jsx
           onChange={(e) => onChange(e.target.value)} 
         />
       </div>

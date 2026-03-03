@@ -45,7 +45,6 @@ app.post('/api/cars/rent/:id', async (req, res) => {
             return res.status(400).json({ message: "Out of stock" });
         }
 
-        // Decrease stock by 1
         car.stock -= 1;
         await car.save();
 

@@ -1,4 +1,3 @@
-// backend/models/cars.js
 import mongoose from 'mongoose';
 
 const carSchema = new mongoose.Schema({
@@ -6,7 +5,7 @@ const carSchema = new mongoose.Schema({
     description: { type: String, required: true },
     image: { type: String, required: true },
     type: { type: String, required: true },
-    stock: { type: Number, default: 1 } // Add this line to track quantity
+    stock: { type: Number, default: 1 } 
 });
 
 export default mongoose.model('Car', carSchema, 'cars');

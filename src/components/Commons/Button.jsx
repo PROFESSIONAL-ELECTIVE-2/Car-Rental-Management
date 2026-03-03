@@ -1,14 +1,14 @@
 import React from 'react';
 import './Button.css'; 
 
-function Button() {
-    const handleClick = () => {
-        alert("Button Clicked!");
-    };
-
+function Button({ onClick, disabled, children, className }) {
     return (
-        <button className="custom-button" onClick={handleClick}>
-            Rent Now
+        <button 
+            className={`custom-button ${className}`} 
+            onClick={onClick} 
+            disabled={disabled}
+        >
+            {children}
         </button>
     );
 }

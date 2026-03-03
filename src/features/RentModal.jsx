@@ -1,4 +1,3 @@
-// src/features/RentModal.jsx
 import React, { useState } from 'react';
 import './RentModal.css';
 

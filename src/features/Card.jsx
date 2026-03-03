@@ -1,4 +1,5 @@
 import React from 'react';
+import Button from '../components/Commons/Button'; 
 import './Card.css';
 
 function Card({ id, title, description, image, type, stock, onRent }) {
@@ -14,13 +15,14 @@ function Card({ id, title, description, image, type, stock, onRent }) {
                 <p className="card-stock">
                     <strong>Available Units:</strong> {stock || 0}
                 </p>
-                <button 
+                
+                <Button 
                     className="rent-button" 
                     onClick={() => onRent(id)}
                     disabled={stock <= 0}
                 >
                     {stock > 0 ? "Rent Now" : "Out of Stock"}
-                </button>
+                </Button>
             </div>
         </div>
     );

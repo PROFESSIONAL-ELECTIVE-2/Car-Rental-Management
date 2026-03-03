@@ -2,12 +2,13 @@ import React from 'react';
 import Button from '../components/Commons/Button';
 import './Card.css';
 
-function Card({ id, title, description, image, type, stock = 0, onRent }) {
+// id is often passed as _id from MongoDB, using both for compatibility
+function Card({ _id, id, title, description, image, type, stock = 0, onRent }) {
     const isOutOfStock = stock <= 0;
+    const carId = _id || id;
 
     return (
-        <article className="card">
-
+        <article className={`card ${isOutOfStock ? 'is-out' : ''}`}>
             <div className="card-image-container">
                 <img
                     src={image}
@@ -20,19 +21,22 @@ function Card({ id, title, description, image, type, stock = 0, onRent }) {
                         {type}
                     </span>
                 )}
+                {isOutOfStock && (
+                    <div className="out-of-stock-overlay">
+                        <span>Sold Out</span>
+                    </div>
+                )}
             </div>
 
             <div className="card-content">
                 <div className="card-text">
                     <h3 className="card-title">{title}</h3>
-
                     <p className="card-description">
                         {description}
                     </p>
-
                     <p className={`card-stock ${isOutOfStock ? 'out' : ''}`}>
                         {isOutOfStock
-                            ? "Out of Stock"
+                            ? "Unavailable"
                             : `Available Units: ${stock}`
                         }
                     </p>
@@ -40,13 +44,12 @@ function Card({ id, title, description, image, type, stock = 0, onRent }) {
 
                 <Button
                     className="rent-button"
-                    onClick={() => onRent(id)}
+                    onClick={() => onRent(carId)}
                     disabled={isOutOfStock}
                 >
-                    {isOutOfStock ? "Unavailable" : "Rent Now"}
+                    {isOutOfStock ? "Fully Booked" : "Rent Now"}
                 </Button>
             </div>
-
         </article>
     );
 }

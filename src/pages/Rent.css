@@ -1,5 +1,6 @@
+/* --- PAGE CONTAINER --- */
 .rent-page {
-    max-width: 1200px;
+    max-width: 1000px; 
     margin: 0 auto;
     padding: 2rem;
 }
@@ -14,37 +15,72 @@
     color: #1f2937;
 }
 
-.rent-container {
-    display: flex;
-    gap: 2rem;
-}
-
-.filters {
-    flex: 1;
-    min-width: 200px;
-    background: white;
-    padding: 1.5rem;
-    border-radius: 8px;
-    height: fit-content;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-}
-
-.filters ul {
-    list-style: none;
-    padding: 0;
-    margin-top: 1rem;
-}
-
-.filters li {
-    margin-bottom: 0.8rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
+/* --- FLEET GRID --- */
 .fleet-grid {
-    flex: 4;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* auto-fit adjusts nicely for few cards */
     gap: 2rem;
+    justify-content: center; /* center when fewer cards */
+    align-items: start;
+}
+
+/* --- CAR CARD --- */
+.fleet-grid > * {
+    max-width: 380px;
+    width: 100%;
+    margin: 0 auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: #fff; /* ensures uniform background */
+}
+
+/* --- CARD IMAGE --- */
+.fleet-grid img {
+    width: 100%;
+    aspect-ratio: 16/9; /* maintains consistent proportion */
+    object-fit: cover; 
+    display: block;
+}
+
+/* --- CARD CONTENT --- */
+.fleet-grid > * > div {
+    padding: 1rem;
+}
+
+/* --- RESPONSIVE GRID --- */
+@media (max-width: 1200px) {
+    .fleet-grid {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+}
+
+@media (max-width: 992px) {
+    .fleet-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .fleet-grid {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+}
+
+@media (max-width: 480px) {
+    .fleet-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* --- NO RESULTS --- */
+.no-results {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 2rem;
+    background: #f3f4f6;
+    border-radius: 8px;
+    color: #374151;
 }

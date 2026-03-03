@@ -11,10 +11,12 @@ function Rent() {
     const [searchQuery, setSearchQuery] = useState(""); 
 
     useEffect(() => {
-        fetch('http://localhost:5000/api/cars')
+        // Updated to use the environment variable or localhost
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        
+        fetch(`${API_URL}/api/cars`)
             .then(res => res.json())
             .then(data => {
-                console.log("Sample car object:", data[0]);
                 setCars(Array.isArray(data) ? data : []);
                 setLoading(false);
             })
@@ -24,18 +26,18 @@ function Rent() {
             });
     }, []);
 
-
     const filteredCars = cars.filter(car => {
-    const term = searchQuery.toLowerCase();
-    return [car.name, car.make, car.brand, car.model, car.title, car.type]
-        .filter(Boolean)
-        .some(field => field.toLowerCase().includes(term));
-});
-
+        const term = searchQuery.toLowerCase();
+        // Safe check for multiple fields
+        return [car.name, car.make, car.brand, car.model, car.title, car.type]
+            .filter(Boolean)
+            .some(field => field.toString().toLowerCase().includes(term));
+    });
 
     const handleRentConfirm = async (carId, details) => {
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
         try {
-            const response = await fetch(`http://localhost:5000/api/cars/rent/${carId}`, {
+            const response = await fetch(`${API_URL}/api/cars/rent/${carId}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(details) 
@@ -43,7 +45,7 @@ function Rent() {
 
             if (response.ok) {
                 setCars(prev => prev.map(c => 
-                    c._id === carId ? { ...c, stock: c.stock - 1 } : c
+                    c._id === carId ? { ...c, stock: Math.max(0, c.stock - 1) } : c
                 ));
                 alert(`Success! Rental confirmed.`);
                 setSelectedCar(null); 
@@ -55,24 +57,33 @@ function Rent() {
 
     return (
         <div className="rent-page">
+            <header className="rent-header">
+                <h1>Our Fleet</h1>
+                <p>Select from our range of well-maintained vehicles.</p>
+            </header>
+
             <SearchBar 
                 value={searchQuery} 
                 onChange={setSearchQuery} 
+                placeholder="Search by brand, model, or type..."
             />
 
             <main className="fleet-grid">
                 {loading ? (
-                    <p>Loading database...</p>
+                    <p className="status-message">Loading database...</p>
                 ) : filteredCars.length > 0 ? (
                     filteredCars.map(car => (
                         <Card 
                             key={car._id} 
                             {...car} 
+                            disabled={car.stock === 0}
                             onRent={() => setSelectedCar(car)} 
                         />
                     ))
                 ) : (
-                    <div className="no-results">No cars found in database for "{searchQuery}"</div>
+                    <div className="no-results">
+                        No cars found for "<strong>{searchQuery}</strong>"
+                    </div>
                 )}
             </main>
 

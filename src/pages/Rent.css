@@ -1,80 +1,50 @@
-/* ===============================
-   Page Layout
-================================ */
 .rent-page {
-    max-width: 1300px;
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 3rem 2rem;
+    padding: 2rem;
 }
 
-/* ===============================
-   Header
-================================ */
 .rent-header {
     text-align: center;
-    margin-bottom: 2.5rem;
+    margin-bottom: 3rem;
 }
 
 .rent-header h1 {
-    font-size: 2.75rem;
-    font-weight: 700;
-    color: #111827;
-    margin-bottom: 0.5rem;
+    font-size: 2.5rem;
+    color: #1f2937;
 }
 
-.rent-header p {
-    color: #6b7280;
-    font-size: 1rem;
-}
-
-/* ===============================
-   Fleet Grid
-================================ */
-.fleet-grid {
-    margin-top: 2rem;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+.rent-container {
+    display: flex;
     gap: 2rem;
 }
 
-/* ===============================
-   Status Messages
-================================ */
-.status-message,
-.error-message,
-.no-results {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 2rem;
-    border-radius: 10px;
-    font-size: 1rem;
+.filters {
+    flex: 1;
+    min-width: 200px;
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    height: fit-content;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
 }
 
-.status-message {
-    background: #f9fafb;
-    color: #6b7280;
+.filters ul {
+    list-style: none;
+    padding: 0;
+    margin-top: 1rem;
 }
 
-.error-message {
-    background: #fee2e2;
-    color: #b91c1c;
+.filters li {
+    margin-bottom: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
-.no-results {
-    background: #f3f4f6;
-    color: #374151;
-}
-
-@media (max-width: 768px) {
-    .rent-page {
-        padding: 2rem 1.2rem;
-    }
-
-    .rent-header h1 {
-        font-size: 2rem;
-    }
-
-    .fleet-grid {
-        gap: 1.5rem;
-    }
+.fleet-grid {
+    flex: 4;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 2rem;
 }

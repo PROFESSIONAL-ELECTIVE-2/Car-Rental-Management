@@ -10,7 +10,7 @@ function App() {
     <Router>
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>  
         <Header />
-        <main style={{ flex: 1 }}>
+        <main style={{ flex: 1, paddingTop: '80px' }}> 
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/fleet" element={<Rent />} /> 

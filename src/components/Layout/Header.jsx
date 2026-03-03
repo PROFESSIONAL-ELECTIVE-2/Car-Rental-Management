@@ -12,7 +12,6 @@ function Header() {
 <nav className="main-nav">
     <ul>
         <li><Link to="/">Home</Link></li>
-        {/* Update this link to match the route in App.jsx */}
         <li><Link to="/fleet">Our Fleet</Link></li> 
         <li><Link to="/services">Services</Link></li>
         <li><Link to="/about">About</Link></li>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Button from '../components/Commons/Button';
+import BookingCalendar from '../components/Layout/BookingCalendar'; 
 import './RentModal.css';
 
 function RentModal({ car, onClose, onConfirm }) {
@@ -10,9 +11,39 @@ function RentModal({ car, onClose, onConfirm }) {
         email: '',
         pickupDate: ''
     });
+    const handleDateChange = ({ start, end }) => {
+        if (start && end) {
+            const diffTime = Math.abs(end - start);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            
+            setFormData({
+                ...formData,
+                pickupDate: start.toISOString().split('T')[0], 
+                rentalDays: diffDays
+            });
+        } else if (start) {
+            setFormData({
+                ...formData,
+                pickupDate: start.toISOString().split('T')[0],
+                rentalDays: 1
+            });
+        } else {
+            setFormData({
+                ...formData,
+                pickupDate: '',
+                rentalDays: 1
+            });
+        }
+    };
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        
+        if (!formData.pickupDate) {
+            alert("Please select rental dates on the calendar.");
+            return;
+        }
+        
         onConfirm(car._id, formData);
     };
 
@@ -29,7 +60,6 @@ function RentModal({ car, onClose, onConfirm }) {
 
                 <div className="modal-body">
 
-                    {/* Left Side – Car Summary */}
                     <div className="car-summary">
                         <img
                             src={car.image}
@@ -39,13 +69,12 @@ function RentModal({ car, onClose, onConfirm }) {
                         <h3>{car.title}</h3>
                         <p className="car-type-tag">{car.type}</p>
 
-                        <div className="availability-info">
-                            <p><strong>Available Units:</strong> {car.stock}</p>
-                            <p>Please complete the form to reserve this vehicle.</p>
+                        <div className="calendar-section">
+                            <label className="form-label">Select Rental Dates</label>
+                            <BookingCalendar onDateSelect={handleDateChange} />
                         </div>
                     </div>
 
-                    {/* Right Side – Booking Form */}
                     <form onSubmit={handleSubmit} className="rental-form">
 
                         <div className="form-group">
@@ -93,25 +122,21 @@ function RentModal({ car, onClose, onConfirm }) {
                             <div className="form-group">
                                 <label>Pickup Date</label>
                                 <input
-                                    type="date"
-                                    required
+                                    type="text"
+                                    readOnly
+                                    placeholder="Select from calendar"
                                     value={formData.pickupDate}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, pickupDate: e.target.value })
-                                    }
+                                    className="readonly-input"
                                 />
                             </div>
 
                             <div className="form-group">
-                                <label>Rental Duration (Days)</label>
+                                <label>Total Days</label>
                                 <input
                                     type="number"
-                                    min="1"
-                                    required
+                                    readOnly
                                     value={formData.rentalDays}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, rentalDays: e.target.value })
-                                    }
+                                    className="readonly-input"
                                 />
                             </div>
                         </div>

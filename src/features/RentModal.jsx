@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
+import Button from '../components/Commons/Button';
 import './RentModal.css';
 
 function RentModal({ car, onClose, onConfirm }) {
     const [formData, setFormData] = useState({
-        userName: '',
+        fullName: '',
         rentalDays: 1,
-        phone: ''
+        phone: '',
+        email: '',
+        pickupDate: ''
     });
 
     const handleSubmit = (e) => {
@@ -15,39 +18,121 @@ function RentModal({ car, onClose, onConfirm }) {
 
     return (
         <div className="modal-overlay">
-            <div className="modal-content">
-                <h2>Rent {car.title}</h2>
-                <form onSubmit={handleSubmit}>
-                    <label>Your Name:</label>
-                    <input 
-                        type="text" 
-                        required 
-                        value={formData.userName}
-                        onChange={(e) => setFormData({...formData, userName: e.target.value})}
-                    />
-                    
-                    <label>Duration (Days):</label>
-                    <input 
-                        type="number" 
-                        min="1" 
-                        required 
-                        value={formData.rentalDays}
-                        onChange={(e) => setFormData({...formData, rentalDays: e.target.value})}
-                    />
+            <div className="modal-content booking-modal">
 
-                    <label>Phone Number:</label>
-                    <input 
-                        type="tel" 
-                        required 
-                        value={formData.phone}
-                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                    />
+                <div className="modal-header">
+                    <h2>Book This Vehicle</h2>
+                    <button className="close-x" onClick={onClose}>
+                        &times;
+                    </button>
+                </div>
 
-                    <div className="modal-actions">
-                        <button type="button" onClick={onClose}>Cancel</button>
-                        <button type="submit" className="confirm-btn">Confirm Rental</button>
+                <div className="modal-body">
+
+                    {/* Left Side – Car Summary */}
+                    <div className="car-summary">
+                        <img
+                            src={car.image}
+                            alt={car.title}
+                            className="modal-car-image"
+                        />
+                        <h3>{car.title}</h3>
+                        <p className="car-type-tag">{car.type}</p>
+
+                        <div className="availability-info">
+                            <p><strong>Available Units:</strong> {car.stock}</p>
+                            <p>Please complete the form to reserve this vehicle.</p>
+                        </div>
                     </div>
-                </form>
+
+                    {/* Right Side – Booking Form */}
+                    <form onSubmit={handleSubmit} className="rental-form">
+
+                        <div className="form-group">
+                            <label>Full Name</label>
+                            <input
+                                type="text"
+                                required
+                                placeholder="Juan Dela Cruz"
+                                value={formData.fullName}
+                                onChange={(e) =>
+                                    setFormData({ ...formData, fullName: e.target.value })
+                                }
+                            />
+                        </div>
+
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label>Phone Number</label>
+                                <input
+                                    type="tel"
+                                    required
+                                    placeholder="0912 345 6789"
+                                    value={formData.phone}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, phone: e.target.value })
+                                    }
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>Email Address</label>
+                                <input
+                                    type="email"
+                                    required
+                                    placeholder="juan@example.com"
+                                    value={formData.email}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, email: e.target.value })
+                                    }
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label>Pickup Date</label>
+                                <input
+                                    type="date"
+                                    required
+                                    value={formData.pickupDate}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, pickupDate: e.target.value })
+                                    }
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>Rental Duration (Days)</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    required
+                                    value={formData.rentalDays}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, rentalDays: e.target.value })
+                                    }
+                                />
+                            </div>
+                        </div>
+
+                        <div className="modal-actions">
+                            <button
+                                type="button"
+                                className="cancel-btn"
+                                onClick={onClose}
+                            >
+                                Cancel
+                            </button>
+
+                            <Button type="submit" className="confirm-btn">
+                                Confirm Booking
+                            </Button>
+                        </div>
+
+                    </form>
+
+                </div>
             </div>
         </div>
     );

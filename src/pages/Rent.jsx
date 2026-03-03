@@ -1,88 +1,149 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Card from '../features/Card.jsx';
-import RentModal from '../features/RentModal.jsx'; 
-import SearchBar from '../features/SearchBar.jsx'; 
+import RentModal from '../features/RentModal.jsx';
+import SearchBar from '../features/SearchBar.jsx';
 import './Rent.css';
 
-function Rent() {
-    const [cars, setCars] = useState([]); 
-    const [selectedCar, setSelectedCar] = useState(null); 
-    const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState(""); 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+function Rent() {
+    const [cars, setCars] = useState([]);
+    const [selectedCar, setSelectedCar] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [searchQuery, setSearchQuery] = useState("");
+
+    /* =========================
+       Fetch Cars
+    ========================== */
     useEffect(() => {
-        fetch('http://localhost:5000/api/cars')
-            .then(res => res.json())
-            .then(data => {
-                console.log("Sample car object:", data[0]);
+        const fetchCars = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+
+                const response = await fetch(`${API_BASE_URL}/api/cars`);
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const data = await response.json();
                 setCars(Array.isArray(data) ? data : []);
+            } catch (err) {
+                console.error("Error fetching cars:", err);
+                setError("Unable to load vehicles. Please try again later.");
+            } finally {
                 setLoading(false);
-            })
-            .catch(err => {
-                console.error("Database error:", err);
-                setLoading(false);
-            });
+            }
+        };
+
+        fetchCars();
     }, []);
 
+    /* =========================
+       Search Filtering
+    ========================== */
+    const filteredCars = useMemo(() => {
+        if (!searchQuery.trim()) return cars;
 
-    const filteredCars = cars.filter(car => {
-    const term = searchQuery.toLowerCase();
-    return [car.name, car.make, car.brand, car.model, car.title, car.type]
-        .filter(Boolean)
-        .some(field => field.toLowerCase().includes(term));
-});
+        const term = searchQuery.toLowerCase();
 
+        return cars.filter(car =>
+            [car.name, car.make, car.brand, car.model, car.title, car.type]
+                .filter(Boolean)
+                .some(field => field.toLowerCase().includes(term))
+        );
+    }, [cars, searchQuery]);
 
+    /* =========================
+       Handle Rental
+    ========================== */
     const handleRentConfirm = async (carId, details) => {
         try {
-            const response = await fetch(`http://localhost:5000/api/cars/rent/${carId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(details) 
-            });
+            const response = await fetch(
+                `${API_BASE_URL}/api/cars/rent/${carId}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(details)
+                }
+            );
 
-            if (response.ok) {
-                setCars(prev => prev.map(c => 
-                    c._id === carId ? { ...c, stock: c.stock - 1 } : c
-                ));
-                alert(`Success! Rental confirmed.`);
-                setSelectedCar(null); 
+            if (!response.ok) {
+                throw new Error("Rental failed");
             }
+
+            // Optimistic UI update
+            setCars(prev =>
+                prev.map(car =>
+                    car._id === carId
+                        ? { ...car, stock: Math.max(car.stock - 1, 0) }
+                        : car
+                )
+            );
+
+            setSelectedCar(null);
+
         } catch (err) {
-            alert("Error processing rental.");
+            console.error("Rental error:", err);
+            alert("Unable to process rental. Please try again.");
         }
     };
 
     return (
         <div className="rent-page">
-            <SearchBar 
-                value={searchQuery} 
-                onChange={setSearchQuery} 
+
+            <header className="rent-header">
+                <h1>Available Vehicles</h1>
+                <p>Browse our complete fleet and book your next ride.</p>
+            </header>
+
+            <SearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search by brand, model, or type..."
             />
 
             <main className="fleet-grid">
-                {loading ? (
-                    <p>Loading database...</p>
-                ) : filteredCars.length > 0 ? (
-                    filteredCars.map(car => (
-                        <Card 
-                            key={car._id} 
-                            {...car} 
-                            onRent={() => setSelectedCar(car)} 
-                        />
-                    ))
-                ) : (
-                    <div className="no-results">No cars found in database for "{searchQuery}"</div>
+
+                {loading && (
+                    <p className="status-message">Loading vehicles...</p>
                 )}
+
+                {error && (
+                    <p className="error-message">{error}</p>
+                )}
+
+                {!loading && !error && filteredCars.length === 0 && (
+                    <div className="no-results">
+                        No vehicles found for "<strong>{searchQuery}</strong>"
+                    </div>
+                )}
+
+                {!loading && !error && filteredCars.map(car => (
+                    <Card
+                        key={car._id}
+                        {...car}
+                        disabled={car.stock === 0}
+                        onRent={() => {
+                            if (car.stock > 0) {
+                                setSelectedCar(car);
+                            }
+                        }}
+                    />
+                ))}
+
             </main>
 
             {selectedCar && (
-                <RentModal 
-                    car={selectedCar} 
-                    onClose={() => setSelectedCar(null)} 
+                <RentModal
+                    car={selectedCar}
+                    onClose={() => setSelectedCar(null)}
                     onConfirm={handleRentConfirm}
                 />
             )}
+
         </div>
     );
 }

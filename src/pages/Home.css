@@ -1,45 +1,106 @@
 .home-container {
+    font-family: 'Inter', sans-serif;
+    color: #333;
+}
+
+/* Hero Section */
+.hero-section {
+    height: 70vh;
+    background: url('https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=1600') center/cover no-repeat;
+    position: relative;
     display: flex;
-    flex-direction: column;
     align-items: center;
 }
 
-.hero-section {
+.hero-overlay {
+    background: rgba(0, 0, 0, 0.6); /* Darker overlay for professional feel */
     width: 100%;
-    text-align: center;
-    padding: 4rem 2rem;
-    background-color: #f3f4f6;
-    margin-bottom: 2rem;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    padding: 0 10%;
 }
 
-.hero-section h1 {
-    font-size: 2.5rem;
-    color: #1f2937;
-    margin-bottom: 1rem;
+.hero-content {
+    color: white;
+    max-width: 600px;
 }
 
-.hero-section p {
+.hero-subtitle {
+    display: block;
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+    color: #ffc107; /* Gold accent */
+    margin-bottom: 10px;
+}
+
+.hero-content h1 {
+    font-size: 3.5rem;
+    margin-bottom: 20px;
+    line-height: 1.1;
+}
+
+.hero-content p {
     font-size: 1.2rem;
-    color: #4b5563;
-    margin-bottom: 2rem;
+    margin-bottom: 30px;
+    opacity: 0.9;
 }
+
+/* Information Section */
+.info-section {
+    padding: 60px 10%;
+    background: #f8f9fa;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+}
+
+.info-card {
+    text-align: center;
+    padding: 20px;
+}
+
+.info-card h3 {
+    margin-bottom: 15px;
+    color: #222;
+}
+
+.info-card p {
+    font-size: 0.95rem;
+    color: #666;
+    line-height: 1.6;
+}
+
 
 .featured-section {
-    width: 100%;
-    max-width: 1200px;
-    padding: 2rem;
-    text-align: center;
+    padding: 80px 10%;
 }
 
-.featured-section h2 {
-    font-size: 2rem;
-    margin-bottom: 2rem;
-    color: #1f2937;
+.section-header {
+    text-align: center;
+    margin-bottom: 50px;
+}
+
+.section-header h2 {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+
+.section-header p {
+    color: #777;
 }
 
 .car-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2rem;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+}
+
+@media (max-width: 768px) {
+    .hero-content h1 { font-size: 2.5rem; }
+    .info-grid { grid-template-columns: 1fr; }
+    .hero-overlay { padding: 0 5%; }
 }

@@ -1,25 +1,102 @@
+/* ===============================
+   Card Container
+================================ */
 .card {
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    padding: 1rem;
-    max-width: 300px;
-    text-align: center;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #ffffff;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid #f1f5f9;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.card img {
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+}
+
+/* ===============================
+   Image Container (Uniform Size)
+================================ */
+.card-image-container {
+    position: relative;
     width: 100%;
-    border-radius: 4px;
+    height: 200px; /* 🔥 Forces same image height */
+    overflow: hidden;
+    background: #f3f4f6;
+}
+
+.card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* 🔥 Prevents distortion */
+    display: block;
+}
+
+/* ===============================
+   Type Badge
+================================ */
+.card-type-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: #2563eb;
+    color: white;
+    font-size: 0.75rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 50px;
+    font-weight: 500;
+}
+
+/* ===============================
+   Content Section
+================================ */
+.card-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    flex: 1;
+    padding: 1.2rem;
+}
+
+.card-text {
+    flex-grow: 1;
 }
 
 .card-title {
-    font-family: Arial, sans-serif;
-    font-size: 1.5rem;
-    margin: 0.5rem 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 0.5rem;
 }
 
 .card-description {
-    font-family: Arial, sans-serif;
-    font-size: 1rem;
-    color: #555;
+    font-size: 0.95rem;
+    color: #6b7280;
+    margin-bottom: 0.75rem;
+    line-height: 1.4;
+}
+
+/* ===============================
+   Stock Text
+================================ */
+.card-stock {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #16a34a;
+}
+
+.card-stock.out {
+    color: #dc2626;
+}
+
+/* ===============================
+   Button
+================================ */
+.rent-button {
+    margin-top: 1rem;
+    width: 100%;
 }

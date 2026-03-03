@@ -42,7 +42,6 @@ function Home() {
     return (
         <main className="home-container">
             
-            {/* Hero Section */}
             <section className="hero-section">
                 <div className="hero-overlay">
                     <div className="hero-content">
@@ -67,7 +66,6 @@ function Home() {
                 </div>
             </section>
 
-            {/* Information Section */}
             <section className="info-section">
                 <div className="info-grid">
                     <div className="info-card">
@@ -96,7 +94,6 @@ function Home() {
                 </div>
             </section>
 
-            {/* Featured Fleet Section */}
             <section className="featured-section">
                 <header className="section-header">
                     <h2>Featured Fleet</h2>

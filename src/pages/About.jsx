@@ -1,96 +1,142 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import Button from '../components/Commons/Button.jsx';
 import './About.css';
 
-const AboutUs = () => {
-  const fleetCategories = [
-    "Economy Cars", "Luxury Sedans", "SUVs", "Vans", "Specialty Vehicles"
-  ];
+function About() {
+    const navigate = useNavigate();
 
-  const benefits = [
-    "Wide range of vehicles to suit your needs",
-    "Affordable rates with no hidden fees",
-    "Convenient pickup and drop-off locations",
-    "Flexible rental plans to fit your schedule",
-    "24/7 customer support and roadside assistance"
-  ];
+    return (
+        <main className="about-container">
+            <section className="hero-section about-hero">
+                <div className="hero-overlay">
+                    <div className="hero-content">
+                        <span className="hero-subtitle">ESTABLISHED 2014</span>
+                        <h1>Our Journey at Triple R and A</h1>
+                        <p>
+                            From a small local fleet to a premier rental service, we've spent 
+                            the last decade perfecting the art of the journey. We don't just 
+                            rent cars; we provide the keys to your next adventure.
+                        </p>
+                    </div>
+                </div>
+            </section>
 
-  return (
-    <div className="about-container">
-      
-      <header className="about-hero">
-        <h1>About Triple R and A Car Transport Services</h1>
-        <p className="subtitle">Your trusted partner for over a decade.</p>
-      </header>
+            {/* STRUCTURED MISSION SECTION */}
+            <section className="mission-section">
+                <div className="mission-grid-container">
+                    <div className="mission-header">
+                        <span className="accent-line"></span>
+                        <h2>Our Mission</h2>
+                    </div>
+                    <div className="mission-content-box">
+                        <p>
+                            Our mission is to make car rental <strong>easy and accessible</strong> for everyone. 
+                            Whether you're traveling for business, planning a family vacation, 
+                            or need a vehicle for a special occasion, we have the perfect solution for you. 
+                        </p>
+                        <p>
+                            We strive to offer a seamless rental experience with a focus on 
+                            uncompromising customer satisfaction and reliable transportation.
+                        </p>
+                    </div>
+                </div>
+                
+                <div className="facts-bar">
+                    <div className="fact-item"><strong>10+</strong> Years Experience</div>
+                    <div className="fact-item"><strong>5000+</strong> Happy Clients</div>
+                    <div className="fact-item"><strong>24/7</strong> Support</div>
+                    <div className="fact-item"><strong>50+</strong> Luxury Models</div>
+                </div>
+            </section>
 
-      <section className="about-content">
-        <div className="text-block">
-          <p>
-            Welcome to <strong>Triple R and A Car Rentals</strong>. With over a decade of experience, 
-            we provide reliable, affordable, and high-quality car rental services for all your needs.
-          </p>
-        </div>
+            {/* FLEET SECTION */}
+            <section className="info-section alternate-bg">
+                <header className="section-header">
+                    <h2>The Triple R and A Fleet</h2>
+                    <p>Meticulously maintained vehicles for your absolute comfort.</p>
+                </header>
+                <div className="info-grid">
+                    <div className="info-card">
+                        <h3>Economy & Compact</h3>
+                        <p>Fuel-efficient options perfect for city driving and budget-conscious travelers.</p>
+                    </div>
+                    <div className="info-card">
+                        <h3>Luxury Sedans</h3>
+                        <p>Travel in style with premium leather interiors and advanced tech features.</p>
+                    </div>
+                    <div className="info-card">
+                        <h3>SUVs & Vans</h3>
+                        <p>Spacious 5-to-12 seaters for family road trips or group excursions.</p>
+                    </div>
+                    <div className="info-card">
+                        <h3>Specialty Vehicles</h3>
+                        <p>Unique models for weddings, film shoots, or making a grand entrance.</p>
+                    </div>
+                </div>
+            </section>
 
-        <div className="mission-section">
-          <h2>Our Mission</h2>
-          <p>
-            Our mission is to make car rental easy and accessible for everyone. Whether you're traveling for business, 
-            planning a family vacation, or need a vehicle for a special occasion, we provide seamless rentals with 
-            a focus on customer satisfaction.
-          </p>
-        </div>
+            {/* WHY CHOOSE US & TEAM SPLIT */}
+            <section className="split-section">
+                <div className="split-content">
+                    <div className="why-us-block">
+                        <div className="block-label">BENEFITS</div>
+                        <h2>Why Choose Us?</h2>
+                        <ul className="benefits-list-simple">
+                            <li><strong>Wide Range:</strong> From city cars to rugged off-roaders.</li>
+                            <li><strong>Fair Pricing:</strong> Competitive rates for long-term rentals.</li>
+                            <li><strong>Convenience:</strong> Multiple pickup points and delivery.</li>
+                            <li><strong>Expertise:</strong> Real humans ready to help you 24/7.</li>
+                        </ul>
+                    </div>
+                    <div className="team-block">
+                        <div className="block-label">OUR PEOPLE</div>
+                        <h2>Professional Team</h2>
+                        <p>
+                            Our team of experienced professionals is dedicated to making your rental 
+                            process as easy as possible. From vehicle selection to logistical support, 
+                            we are here every step of the way.
+                        </p>
+                    </div>
+                </div>
+            </section>
 
-        <hr className="divider" />
+            {/* TESTIMONIALS */}
+            <section className="info-section testimonials-bg">
+                <div className="section-header">
+                    <h2>Customer Voices</h2>
+                </div>
+                <div className="info-grid">
+                    <blockquote className="info-card testimonial">
+                        <p>"Triple R and A made my trip so much easier. The booking process was simple, and the car was in excellent condition."</p>
+                        <cite>— Jane Doe</cite>
+                    </blockquote>
+                    <blockquote className="info-card testimonial">
+                        <p>"Great service and affordable rates. I will definitely use Triple R and A again for my next trip."</p>
+                        <cite>— John Smith</cite>
+                    </blockquote>
+                </div>
+            </section>
 
-        <div className="fleet-section">
-          <h2>Our Fleet</h2>
-          <p>We maintain a diverse fleet of vehicles to ensure your safety and comfort.</p>
-          <div className="fleet-grid">
-            {fleetCategories.map((item, index) => (
-              <div key={index} className="fleet-card">{item}</div>
-            ))}
-          </div>
-        </div>
+            {/* STRUCTURED FINAL CTA */}
+            <section className="final-cta-section">
+                <div className="cta-banner">
+                    <div className="cta-text">
+                        <h2>Ready to Hit the Road?</h2>
+                        <p>Experience high-quality car rentals with 24/7 support.</p>
+                    </div>
+                    <div className="cta-actions">
+                        <Button onClick={() => navigate('/rent')} className="btn-primary-large">
+                            Browse Our Fleet
+                        </Button>
+                        <button onClick={() => navigate('/contact')} className="btn-outline-white">
+                            Contact Support
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    );
+}
 
-        <div className="why-us-section">
-          <h2>Why Choose Us?</h2>
-          <ul className="benefits-list">
-            {benefits.map((benefit, index) => (
-              <li key={index}>{benefit}</li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="team-section">
-          <h2>Our Team</h2>
-          <p>
-            Our experienced professionals make your rental process easy. From choosing the right vehicle to providing 24/7 support, 
-            we're with you every step.
-          </p>
-        </div>
-
-        <div className="testimonials-section">
-          <h2>Customer Testimonials</h2>
-          <div className="testimonial-grid">
-            <blockquote>
-              <p>"Triple R and A Car Rentals made my trip much easier. Booking was simple, and the car was in excellent condition."</p>
-              <cite>— Jane Doe</cite>
-            </blockquote>
-            <blockquote>
-              <p>"Great service and affordable rates. I will definitely use Triple R and A Car Rentals again."</p>
-              <cite>— John Smith</cite>
-            </blockquote>
-          </div>
-        </div>
-
-        <section className="contact-cta">
-          <h2>Contact Us</h2>
-          <p>Our friendly support team is available 24/7.</p>
-          <button className="contact-btn">Get In Touch</button>
-        </section>
-
-      </section>
-    </div>
-  );
-};
-
-export default AboutUs;
+export default About;

@@ -1,86 +1,413 @@
-/* --- PAGE CONTAINER --- */
-.rent-page {
-    max-width: 1000px; 
-    margin: 0 auto;
-    padding: 2rem;
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+    --primary-blue: #2563eb;
+    --primary-blue-dark: #1d4ed8;
+    --dark-grey: #111827;
+    --light-grey: #f9fafb;
+    --accent-gold: #ffc107;
+    --surface: #ffffff;
+    --border: #e5e7eb;
+    --text-muted: #6b7280;
+    --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.10);
+    --card-shadow-hover: 0 20px 50px rgba(37, 99, 235, 0.18);
+    --font-display: 'Playfair Display', serif;
+    --font-body: 'DM Sans', sans-serif;
 }
 
+/* ============================
+   PAGE LAYOUT
+   ============================ */
+
+.rent-page {
+    font-family: var(--font-body);
+    color: var(--dark-grey);
+    background: var(--light-grey);
+    min-height: 100vh;
+}
+
+/* ============================
+   HEADER — Full-bleed editorial
+   ============================ */
+
 .rent-header {
-    text-align: center;
-    margin-bottom: 3rem;
+    position: relative;
+    background: var(--dark-grey);
+    padding: 80px 10% 70px;
+    overflow: hidden;
+    text-align: left;
+}
+
+/* Diagonal accent stripe */
+.rent-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -60px;
+    width: 420px;
+    height: 100%;
+    background: var(--primary-blue);
+    transform: skewX(-12deg);
+    opacity: 0.18;
+    pointer-events: none;
+}
+
+/* Gold accent line */
+.rent-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 10%;
+    width: 60px;
+    height: 4px;
+    background: var(--accent-gold);
+    border-radius: 2px;
+}
+
+.rent-header-eyebrow {
+    display: block;
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent-gold);
+    margin-bottom: 14px;
+    animation: fadeSlideUp 0.5s ease both;
 }
 
 .rent-header h1 {
-    font-size: 2.5rem;
-    color: #1f2937;
+    font-family: var(--font-display);
+    font-size: clamp(2.8rem, 5vw, 4.5rem);
+    font-weight: 900;
+    color: #ffffff;
+    line-height: 1.05;
+    margin: 0 0 16px;
+    animation: fadeSlideUp 0.55s 0.08s ease both;
 }
 
-/* --- FLEET GRID --- */
+.rent-header h1 em {
+    font-style: italic;
+    color: var(--accent-gold);
+}
+
+.rent-header p {
+    font-size: 1.05rem;
+    color: rgba(255, 255, 255, 0.65);
+    margin: 0;
+    font-weight: 300;
+    animation: fadeSlideUp 0.55s 0.15s ease both;
+}
+
+/* ============================
+   SEARCH BAR WRAPPER
+   ============================ */
+
+.search-wrapper {
+    background: white;
+    border-bottom: 1px solid var(--border);
+    padding: 20px 10%;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+/* SearchBar component gets these styles from parent context */
+.search-wrapper input,
+.search-wrapper .search-bar input,
+.search-wrapper .search-input {
+    flex: 1;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    padding: 12px 18px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: var(--light-grey);
+    color: var(--dark-grey);
+}
+
+.search-wrapper input:focus,
+.search-wrapper .search-bar input:focus,
+.search-wrapper .search-input:focus {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    background: white;
+}
+
+/* ============================
+   FLEET GRID
+   ============================ */
+
 .fleet-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* auto-fit adjusts nicely for few cards */
-    gap: 2rem;
-    justify-content: center; /* center when fewer cards */
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 28px;
+    padding: 48px 10%;
     align-items: start;
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
-/* --- CAR CARD --- */
+/* ============================
+   CAR CARD OVERRIDES
+   Cards rendered via <Card /> component — target generic child elements
+   ============================ */
+
 .fleet-grid > * {
-    max-width: 380px;
-    width: 100%;
-    margin: 0 auto;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    background: var(--surface);
+    border-radius: 16px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    background: #fff; /* ensures uniform background */
+    box-shadow: var(--card-shadow);
+    border: 1px solid var(--border);
+    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.28s ease;
+    animation: cardReveal 0.5s ease both;
+    max-width: 420px;
+    width: 100%;
+    margin: 0 auto;
 }
 
-/* --- CARD IMAGE --- */
+/* Staggered card entrance */
+.fleet-grid > *:nth-child(1)  { animation-delay: 0.05s; }
+.fleet-grid > *:nth-child(2)  { animation-delay: 0.10s; }
+.fleet-grid > *:nth-child(3)  { animation-delay: 0.15s; }
+.fleet-grid > *:nth-child(4)  { animation-delay: 0.20s; }
+.fleet-grid > *:nth-child(5)  { animation-delay: 0.25s; }
+.fleet-grid > *:nth-child(6)  { animation-delay: 0.30s; }
+.fleet-grid > *:nth-child(7)  { animation-delay: 0.35s; }
+.fleet-grid > *:nth-child(8)  { animation-delay: 0.40s; }
+.fleet-grid > *:nth-child(9)  { animation-delay: 0.45s; }
+
+.fleet-grid > *:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--card-shadow-hover);
+}
+
+/* Car image */
 .fleet-grid img {
     width: 100%;
-    aspect-ratio: 16/9; /* maintains consistent proportion */
-    object-fit: cover; 
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
     display: block;
+    transition: transform 0.4s ease;
 }
 
-/* --- CARD CONTENT --- */
+.fleet-grid > *:hover img {
+    transform: scale(1.04);
+}
+
+/* Card body — generic div child */
 .fleet-grid > * > div {
-    padding: 1rem;
+    padding: 20px 22px 22px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
 }
 
-/* --- RESPONSIVE GRID --- */
-@media (max-width: 1200px) {
-    .fleet-grid {
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+/* Card title (h3 or similar) */
+.fleet-grid > * h3,
+.fleet-grid > * .car-name,
+.fleet-grid > * .card-title {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--dark-grey);
+    margin: 0 0 6px;
+    line-height: 1.25;
+}
+
+/* Price / badge */
+.fleet-grid > * .car-price,
+.fleet-grid > * .price {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+    margin-bottom: 8px;
+}
+
+/* Description / secondary text */
+.fleet-grid > * p {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin: 0 0 16px;
+}
+
+/* Stock badge */
+.fleet-grid > * .stock,
+.fleet-grid > * .car-stock {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: #dcfce7;
+    color: #166534;
+    margin-bottom: 14px;
+    width: fit-content;
+}
+
+/* Out of stock variant */
+.fleet-grid > *[data-stock="0"] .stock,
+.fleet-grid > * .stock-empty {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* Rent button */
+.fleet-grid > * button,
+.fleet-grid > * .rent-btn {
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 11px 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    background: var(--primary-blue);
+    color: white;
+    transition: background 0.2s, transform 0.15s;
+    margin-top: auto;
+    letter-spacing: 0.3px;
+}
+
+.fleet-grid > * button:hover:not(:disabled) {
+    background: var(--primary-blue-dark);
+    transform: translateY(-1px);
+}
+
+.fleet-grid > * button:disabled {
+    background: #d1d5db;
+    color: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ============================
+   STATUS STATES
+   ============================ */
+
+.status-message {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+    font-size: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+/* Animated loading dots */
+.status-message::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--primary-blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.no-results {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 16px;
+    color: var(--dark-grey);
+    border: 1.5px dashed var(--border);
+    font-size: 1rem;
+}
+
+.no-results strong {
+    color: var(--primary-blue);
+}
+
+/* ============================
+   ANIMATIONS
+   ============================ */
+
+@keyframes fadeSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(18px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
-@media (max-width: 992px) {
+@keyframes cardReveal {
+    from {
+        opacity: 0;
+        transform: translateY(24px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ============================
+   RESPONSIVE
+   ============================ */
+
+@media (max-width: 1100px) {
     .fleet-grid {
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        padding: 40px 6%;
+    }
+    .rent-header {
+        padding: 60px 6% 50px;
+    }
+    .search-wrapper {
+        padding: 16px 6%;
     }
 }
 
 @media (max-width: 768px) {
     .fleet-grid {
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 20px;
+        padding: 30px 4%;
+    }
+    .rent-header h1 {
+        font-size: 2.4rem;
+    }
+    .rent-header {
+        padding: 50px 5% 44px;
+    }
+    .search-wrapper {
+        padding: 14px 5%;
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 520px) {
     .fleet-grid {
         grid-template-columns: 1fr;
+        padding: 24px 5%;
     }
-}
-
-/* --- NO RESULTS --- */
-.no-results {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 2rem;
-    background: #f3f4f6;
-    border-radius: 8px;
-    color: #374151;
+    .fleet-grid > * {
+        max-width: 100%;
+    }
+    .rent-header h1 {
+        font-size: 2rem;
+    }
 }

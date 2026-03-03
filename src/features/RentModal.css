@@ -1,162 +1,424 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+    --primary-blue: #2563eb;
+    --primary-blue-dark: #1d4ed8;
+    --dark-grey: #111827;
+    --light-grey: #f9fafb;
+    --accent-gold: #ffc107;
+    --surface: #ffffff;
+    --border: #e5e7eb;
+    --text-muted: #6b7280;
+    --font-display: 'Playfair Display', serif;
+    --font-body: 'DM Sans', sans-serif;
+}
+
+
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.65);
+    background: rgba(10, 14, 26, 0.75);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 1000;
+    padding: 16px;
+    animation: overlayIn 0.2s ease both;
 }
 
-.booking-modal {
-    background: #ffffff;
-    border-radius: 14px;
-    width: 95%;
-    max-width: 900px;
-    overflow: hidden;
-    animation: slideUp 0.25s ease-out;
+@keyframes overlayIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
 }
+
+.modal-content.booking-modal {
+    font-family: var(--font-body);
+    background: var(--surface);
+    width: 100%;
+    max-width: 980px;
+    max-height: 92vh;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow:
+        0 0 0 1px rgba(255,255,255,0.08),
+        0 32px 80px rgba(0, 0, 0, 0.35),
+        0 8px 24px rgba(37, 99, 235, 0.12);
+    animation: modalIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes modalIn {
+    from {
+        opacity: 0;
+        transform: translateY(28px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
 
 .modal-header {
-    padding: 1.5rem;
-    border-bottom: 1px solid #f1f5f9;
+    position: relative;
+    padding: 20px 28px 18px;
+    background: var(--dark-grey);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.modal-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -40px;
+    width: 260px;
+    height: 100%;
+    background: var(--primary-blue);
+    transform: skewX(-14deg);
+    opacity: 0.15;
+    pointer-events: none;
+}
+
+.modal-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 28px;
+    width: 36px;
+    height: 3px;
+    background: var(--accent-gold);
+    border-radius: 2px;
 }
 
 .modal-header h2 {
-    font-size: 1.4rem;
-    font-weight: 600;
-    color: #111827;
+    font-family: var(--font-display);
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0;
+    letter-spacing: -0.2px;
 }
 
 .close-x {
-    background: none;
-    border: none;
-    font-size: 1.4rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.85);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    font-size: 1.3rem;
+    line-height: 1;
     cursor: pointer;
-    color: #6b7280;
-}
-
-.modal-body {
     display: flex;
-    gap: 2rem;
-    padding: 2rem;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, color 0.2s, transform 0.15s;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
 }
 
-/* ===============================
-   Car Summary
-================================ */
-.car-summary {
+.close-x:hover {
+    background: rgba(255, 255, 255, 0.22);
+    color: white;
+    transform: rotate(90deg) scale(1.08);
+}
+
+.modal-scroll-area {
+    display: flex;
+    flex-direction: row;
+    gap: 0;
     flex: 1;
-    background: #f9fafb;
-    padding: 1.5rem;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.modal-top {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 24px 24px 24px 28px;
+    border-right: 1px solid var(--border);
+    background: var(--light-grey);
+    overflow-y: auto;
+}
+
+.car-summary {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: white;
+    padding: 14px 16px;
     border-radius: 12px;
-    text-align: center;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.car-image-wrapper {
+    width: 130px;
+    height: 82px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--light-grey);
+    border: 1px solid var(--border);
 }
 
 .modal-car-image {
     width: 100%;
-    height: 180px;
+    height: 100%;
     object-fit: cover;
-    border-radius: 10px;
-    margin-bottom: 1rem;
+    display: block;
+    transition: transform 0.3s ease;
+}
+
+.car-summary:hover .modal-car-image {
+    transform: scale(1.05);
+}
+
+.car-summary-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.modal-car-title {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--dark-grey);
+    margin: 0;
+    line-height: 1.2;
 }
 
 .car-type-tag {
     display: inline-block;
-    margin-top: 0.5rem;
-    font-size: 0.85rem;
-    background: #2563eb;
-    color: white;
-    padding: 0.3rem 0.8rem;
-    border-radius: 50px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    background: #eff6ff;
+    color: var(--primary-blue);
+    border: 1px solid #bfdbfe;
+    padding: 3px 10px;
+    border-radius: 20px;
+    width: fit-content;
 }
 
-.availability-info {
-    margin-top: 1rem;
-    font-size: 0.9rem;
-    color: #374151;
-}
-
-/* ===============================
-   Booking Form
-================================ */
-.rental-form {
-    flex: 1.5;
+.calendar-section {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 8px;
 }
 
-.form-row {
+.form-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    display: block;
+}
+
+.modal-bottom {
+    flex: 1.15;
     display: flex;
-    gap: 1rem;
+    flex-direction: column;
+    overflow-y: auto;
+    min-height: 0;
 }
 
-.form-group {
+.rental-form {
     display: flex;
     flex-direction: column;
     flex: 1;
+    padding: 24px 28px 0;
+}
+
+
+.form-group {
+    margin-bottom: 14px;
 }
 
 .form-group label {
-    font-size: 0.85rem;
+    display: block;
+    font-size: 0.78rem;
     font-weight: 600;
-    margin-bottom: 0.4rem;
-    color: #374151;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
 }
 
 .form-group input {
-    padding: 0.65rem;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: var(--font-body);
     font-size: 0.9rem;
+    color: var(--dark-grey);
+    background: var(--surface);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    box-sizing: border-box;
 }
 
 .form-group input:focus {
-    outline: none;
-    border-color: #2563eb;
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    background: white;
 }
 
-/* ===============================
-   Buttons
-================================ */
+.form-group input::placeholder {
+    color: #c4c9d4;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+
+.readonly-input {
+    background: var(--light-grey) !important;
+    color: var(--text-muted) !important;
+    cursor: default;
+    border-color: var(--border) !important;
+    box-shadow: none !important;
+    font-weight: 500;
+}
+
+
 .modal-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 1rem;
-    margin-top: 1rem;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 28px;
+    margin-top: auto;
+    border-top: 1px solid var(--border);
+    background: var(--light-grey);
+    flex-shrink: 0;
 }
 
 .cancel-btn {
-    background: none;
-    border: none;
-    color: #6b7280;
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 10px 20px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
     cursor: pointer;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
 }
 
-.confirm-btn {
-    min-width: 160px;
+.cancel-btn:hover {
+    border-color: #9ca3af;
+    color: var(--dark-grey);
+    background: white;
 }
 
-/* ===============================
-   Animation
-================================ */
-@keyframes slideUp {
-    from {
-        transform: translateY(30px);
-        opacity: 0;
+.confirm-btn,
+button.confirm-btn {
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 10px 28px;
+    border: none;
+    border-radius: 8px;
+    background: var(--primary-blue);
+    color: white;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+}
+
+.confirm-btn:hover,
+button.confirm-btn:hover {
+    background: var(--primary-blue-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+}
+
+.confirm-btn:active,
+button.confirm-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+
+@media (max-width: 800px) {
+    .modal-content.booking-modal {
+        max-height: 96vh;
+        border-radius: 16px;
     }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
 
-@media (max-width: 768px) {
-    .modal-body {
+    .modal-scroll-area {
         flex-direction: column;
+        overflow-y: auto;
+    }
+
+    .modal-top {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        padding: 20px 20px;
+    }
+
+    .modal-bottom {
+        overflow-y: visible;
+    }
+
+    .rental-form {
+        padding: 20px 20px 0;
+    }
+
+    .modal-actions {
+        padding: 16px 20px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .car-image-wrapper {
+        width: 100px;
+        height: 66px;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-header {
+        padding: 16px 20px;
+    }
+
+    .modal-header h2 {
+        font-size: 1.2rem;
+    }
+
+    .modal-actions {
+        flex-direction: column-reverse;
+        gap: 8px;
+    }
+
+    .cancel-btn,
+    .confirm-btn,
+    button.confirm-btn {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
     }
 }

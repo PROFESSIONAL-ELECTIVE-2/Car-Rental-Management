@@ -1,143 +1,430 @@
 :root {
-  --primary-blue: #2563eb; 
-  --primary-blue-dark: #1d4ed8;
-  --dark-grey: #111827;
-  --light-grey: #f9fafb;
-  --accent-gold: #ffc107;
+    --primary-blue: #2563eb;
+    --primary-blue-dark: #1d4ed8;
+    --dark-grey: #111827;
+    --light-grey: #f9fafb;
+    --accent-gold: #ffc107;
 }
 
+/* --- ABOUT CONTAINER --- */
 .about-container {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  line-height: 1.6;
-  color: var(--dark-grey);
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
+    font-family: 'Inter', sans-serif;
+    color: var(--dark-grey);
 }
 
+/* --- HERO SECTION (About-specific background) --- */
 .about-hero {
-  text-align: center;
-  padding: 60px 20px;
-  background-color: var(--primary-blue);
-  color: white;
-  border-radius: 12px;
-  margin-bottom: 40px;
+    height: 70vh;
+    background: url('https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=1600') center/cover no-repeat;
+    position: relative;
+    display: flex;
+    align-items: center;
 }
 
-.about-hero h1 {
-  font-size: 2.75rem;
-  margin-bottom: 10px;
+.hero-overlay {
+    background: rgba(0, 0, 0, 0.6);
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    padding: 0 10%;
 }
 
-.subtitle {
-  font-size: 1.2rem;
-  opacity: 0.9;
+.hero-content {
+    color: white;
+    max-width: 620px;
 }
 
-h2 {
-  color: var(--primary-blue);
-  border-left: 5px solid var(--accent-gold);
-  padding-left: 15px;
-  margin-top: 40px;
+.hero-subtitle {
+    display: block;
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+    color: var(--accent-gold);
+    margin-bottom: 10px;
 }
 
-.fleet-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.5rem;
-  margin-top: 20px;
-  justify-content: center; 
+.hero-content h1 {
+    font-size: 3.5rem;
+    margin-bottom: 20px;
+    line-height: 1.1;
 }
 
-.fleet-card {
-  background: var(--light-grey);
-  padding: 25px;
-  text-align: center;
-  border-radius: 8px;
-  font-weight: bold;
-  border: 1px solid #ddd;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  transition: transform 0.2s;
+.hero-content p {
+    font-size: 1.2rem;
+    margin-bottom: 30px;
+    opacity: 0.9;
 }
 
-.fleet-card:hover {
-  transform: translateY(-4px);
+/* --- MISSION SECTION --- */
+.mission-section {
+    padding: 70px 10%;
+    background: white;
 }
 
-.benefits-list {
-  list-style: none;
-  padding: 0;
-  margin-top: 20px;
+.mission-grid-container {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 40px;
+    align-items: start;
+    margin-bottom: 50px;
 }
 
-.benefits-list li {
-  background: var(--light-grey);
-  margin: 10px 0;
-  padding: 15px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  font-weight: 500;
+.mission-header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 180px;
 }
 
-.testimonial-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
-  margin-top: 20px;
+.accent-line {
+    display: block;
+    width: 50px;
+    height: 4px;
+    background: var(--primary-blue);
+    border-radius: 2px;
 }
 
-blockquote {
-  background: white;
-  border-left: 4px solid var(--primary-blue);
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  margin: 0;
+.mission-header h2 {
+    font-size: 2rem;
+    color: var(--primary-blue);
+    margin: 0;
 }
 
-cite {
-  display: block;
-  margin-top: 12px;
-  font-weight: bold;
-  color: var(--primary-blue);
+.mission-content-box p {
+    font-size: 1.05rem;
+    color: #555;
+    line-height: 1.8;
+    margin-bottom: 12px;
 }
 
-.contact-cta {
-  text-align: center;
-  margin-top: 60px;
-  padding: 40px;
-  background: var(--light-grey);
-  border-radius: 12px;
+.mission-content-box p:last-child {
+    margin-bottom: 0;
 }
 
-.contact-btn {
-  background: var(--primary-blue);
-  color: white;
-  border: none;
-  padding: 14px 36px;
-  font-size: 1rem;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.3s, transform 0.2s;
+/* --- FACTS BAR --- */
+.facts-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    background: var(--primary-blue);
+    border-radius: 12px;
+    padding: 30px 20px;
+    text-align: center;
 }
 
-.contact-btn:hover {
-  background: var(--primary-blue-dark);
-  transform: translateY(-2px);
+.fact-item {
+    color: white;
+    font-size: 0.95rem;
+    letter-spacing: 0.5px;
 }
 
-.divider {
-  margin: 40px 0;
-  border: 0;
-  border-top: 1px solid #eee;
+.fact-item strong {
+    display: block;
+    font-size: 2rem;
+    color: var(--accent-gold);
+    margin-bottom: 4px;
+    line-height: 1.1;
+}
+
+/* --- SHARED INFO SECTION --- */
+.info-section {
+    padding: 70px 10%;
+    background: var(--light-grey);
+}
+
+.alternate-bg {
+    background: var(--light-grey);
+}
+
+.section-header {
+    text-align: center;
+    margin-bottom: 50px;
+}
+
+.section-header h2 {
+    font-size: 2.5rem;
+    color: var(--primary-blue);
+    margin-bottom: 10px;
+}
+
+.section-header p {
+    color: #777;
+    font-size: 1rem;
+}
+
+/* --- INFO GRID & CARDS --- */
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 30px;
+}
+
+.info-card {
+    text-align: center;
+    padding: 30px 25px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: transform 0.2s;
+}
+
+.info-card:hover {
+    transform: translateY(-4px);
+}
+
+.info-card h3 {
+    margin-bottom: 15px;
+    color: var(--primary-blue);
+    font-size: 1.15rem;
+}
+
+.info-card p {
+    font-size: 0.95rem;
+    color: #555;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* --- SPLIT SECTION (Why Us / Team) --- */
+.split-section {
+    padding: 70px 10%;
+    background: white;
+}
+
+.split-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+}
+
+.block-label {
+    font-size: 0.8rem;
+    letter-spacing: 2.5px;
+    color: var(--accent-gold);
+    font-weight: 700;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+
+.why-us-block h2,
+.team-block h2 {
+    font-size: 2rem;
+    color: var(--dark-grey);
+    margin-bottom: 20px;
+}
+
+.benefits-list-simple {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.benefits-list-simple li {
+    font-size: 0.97rem;
+    color: #444;
+    line-height: 1.6;
+    padding-left: 16px;
+    border-left: 3px solid var(--primary-blue);
+}
+
+.benefits-list-simple li strong {
+    color: var(--dark-grey);
+}
+
+.team-block p {
+    font-size: 0.97rem;
+    color: #555;
+    line-height: 1.8;
+}
+
+/* --- TESTIMONIALS --- */
+.testimonials-bg {
+    background: var(--dark-grey);
+}
+
+.testimonials-bg .section-header h2 {
+    color: white;
+}
+
+.info-card.testimonial {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: none;
+    text-align: left;
+    margin: 0;
+}
+
+.info-card.testimonial p {
+    color: #d1d5db;
+    font-style: italic;
+    font-size: 1rem;
+    line-height: 1.7;
+    margin-bottom: 16px;
+}
+
+.info-card.testimonial cite {
+    font-size: 0.9rem;
+    color: var(--accent-gold);
+    font-style: normal;
+    font-weight: 600;
+}
+
+/* --- FINAL CTA SECTION --- */
+.final-cta-section {
+    padding: 70px 10%;
+    background: var(--light-grey);
+}
+
+.cta-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--primary-blue);
+    border-radius: 16px;
+    padding: 50px 60px;
+    gap: 30px;
+}
+
+.cta-text h2 {
+    font-size: 2rem;
+    color: white;
+    margin-bottom: 8px;
+}
+
+.cta-text p {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0;
+}
+
+.cta-actions {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.btn-primary-large {
+    background: var(--accent-gold);
+    color: var(--dark-grey);
+    border: none;
+    padding: 14px 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 1rem;
+    transition: background 0.3s, transform 0.2s;
+}
+
+.btn-primary-large:hover {
+    background: #e6ac00;
+    transform: translateY(-2px);
+}
+
+.btn-outline-white {
+    background: transparent;
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    padding: 12px 28px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: border-color 0.3s, background 0.3s, transform 0.2s;
+}
+
+.btn-outline-white:hover {
+    border-color: white;
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 1024px) {
+    .facts-bar {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .split-content {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+
+    .cta-banner {
+        flex-direction: column;
+        text-align: center;
+        padding: 40px 30px;
+    }
+
+    .cta-actions {
+        justify-content: center;
+    }
 }
 
 @media (max-width: 768px) {
-  .testimonial-grid {
-    grid-template-columns: 1fr;
-  }
+    .hero-content h1 {
+        font-size: 2.5rem;
+    }
 
-  .fleet-grid {
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  }
+    .hero-overlay {
+        padding: 0 5%;
+    }
+
+    .mission-grid-container {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .mission-header {
+        flex-direction: row;
+        align-items: center;
+        min-width: unset;
+    }
+
+    .accent-line {
+        display: none;
+    }
+
+    .facts-bar {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .cta-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .btn-primary-large,
+    .btn-outline-white {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .facts-bar {
+        grid-template-columns: 1fr 1fr;
+        padding: 20px 15px;
+    }
+
+    .hero-content h1 {
+        font-size: 2rem;
+    }
+
+    .section-header h2 {
+        font-size: 1.8rem;
+    }
+
+    .why-us-block h2,
+    .team-block h2 {
+        font-size: 1.6rem;
+    }
 }

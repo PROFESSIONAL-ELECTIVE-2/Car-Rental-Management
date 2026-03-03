@@ -1,0 +1,80 @@
+/* ===============================
+   Page Layout
+================================ */
+.rent-page {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 3rem 2rem;
+}
+
+/* ===============================
+   Header
+================================ */
+.rent-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.rent-header h1 {
+    font-size: 2.75rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.5rem;
+}
+
+.rent-header p {
+    color: #6b7280;
+    font-size: 1rem;
+}
+
+/* ===============================
+   Fleet Grid
+================================ */
+.fleet-grid {
+    margin-top: 2rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 2rem;
+}
+
+/* ===============================
+   Status Messages
+================================ */
+.status-message,
+.error-message,
+.no-results {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 2rem;
+    border-radius: 10px;
+    font-size: 1rem;
+}
+
+.status-message {
+    background: #f9fafb;
+    color: #6b7280;
+}
+
+.error-message {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.no-results {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+@media (max-width: 768px) {
+    .rent-page {
+        padding: 2rem 1.2rem;
+    }
+
+    .rent-header h1 {
+        font-size: 2rem;
+    }
+
+    .fleet-grid {
+        gap: 1.5rem;
+    }
+}

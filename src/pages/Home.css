@@ -53,6 +53,13 @@
     opacity: 0.9;
 }
 
+.hero-cta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
 .hero-cta button {
     background: var(--primary-blue);
     color: white;
@@ -67,6 +74,37 @@
 .hero-cta button:hover {
     background: var(--primary-blue-dark);
     transform: translateY(-2px);
+}
+
+/* Admin Login Button */
+.admin-login-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: rgba(255, 255, 255, 0.75) !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    padding: 11px 20px !important;
+    border-radius: 8px;
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s !important;
+    white-space: nowrap;
+}
+
+.admin-login-btn:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    border-color: rgba(255, 255, 255, 0.45) !important;
+    transform: translateY(-2px) !important;
+}
+
+.admin-login-btn svg {
+    flex-shrink: 0;
+    opacity: 0.9;
 }
 
 .info-section {
@@ -156,7 +194,6 @@
     padding: 20px;
 }
 
-
 .status-message,
 .error-message {
     grid-column: 1 / -1;
@@ -174,4 +211,5 @@
     .info-grid { grid-template-columns: 1fr; }
     .car-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
     .hero-overlay { padding: 0 5%; }
+    .hero-cta { flex-direction: column; align-items: flex-start; }
 }

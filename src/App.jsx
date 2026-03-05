@@ -5,6 +5,7 @@ import Home from './pages/Home.jsx';
 import Rent from './pages/Rent.jsx';
 import Contact from './pages/ContactUs.jsx'; 
 import AboutUs from './pages/About.jsx'; 
+import AdminLogin from './pages/AdminLogin.jsx';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
             <Route path="/fleet" element={<Rent />} /> 
             <Route path="/contact" element={<Contact />} /> 
             <Route path="/about" element={<AboutUs />} /> 
+            <Route path="/admin/login" element={<AdminLogin />} />
           </Routes>
         </main>
         <Footer />

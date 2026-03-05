@@ -11,7 +11,6 @@
     color: var(--dark-grey);
 }
 
-/* --- HERO SECTION --- */
 .hero-section {
     height: 70vh;
     background: url('https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=1600') center/cover no-repeat;
@@ -70,7 +69,6 @@
     transform: translateY(-2px);
 }
 
-/* --- INFO SECTION --- */
 .info-section {
     padding: 60px 10%;
     background: var(--light-grey);
@@ -106,7 +104,6 @@
     line-height: 1.6;
 }
 
-/* --- FEATURED SECTION --- */
 .featured-section {
     padding: 80px 10%;
 }
@@ -126,7 +123,6 @@
     color: #777;
 }
 
-/* --- CAR GRID --- */
 .car-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -134,7 +130,6 @@
     justify-content: center;
 }
 
-/* --- CAR CARD --- */
 .car-grid > * {
     background: var(--light-grey);
     border-radius: 12px;
@@ -151,8 +146,8 @@
 
 .car-grid img {
     width: 100%;
-    aspect-ratio: 16/9; /* ensures consistent image ratio */
-    object-fit: cover;  /* fills container without stretching */
+    aspect-ratio: 16/9; 
+    object-fit: cover;  
     display: block;
     border-bottom: 1px solid #ddd;
 }
@@ -161,7 +156,7 @@
     padding: 20px;
 }
 
-/* --- STATUS & ERROR MESSAGES --- */
+
 .status-message,
 .error-message {
     grid-column: 1 / -1;
@@ -174,7 +169,6 @@
 .status-message { background: #f9fafb; color: #6b7280; }
 .error-message { background: #fee2e2; color: #b91c1c; }
 
-/* --- RESPONSIVE --- */
 @media (max-width: 768px) {
     .hero-content h1 { font-size: 2.5rem; }
     .info-grid { grid-template-columns: 1fr; }

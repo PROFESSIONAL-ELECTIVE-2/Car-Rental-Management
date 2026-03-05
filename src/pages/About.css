@@ -6,13 +6,11 @@
     --accent-gold: #ffc107;
 }
 
-/* --- ABOUT CONTAINER --- */
 .about-container {
     font-family: 'Inter', sans-serif;
     color: var(--dark-grey);
 }
 
-/* --- HERO SECTION (About-specific background) --- */
 .about-hero {
     height: 70vh;
     background: url('https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=1600') center/cover no-repeat;
@@ -55,7 +53,6 @@
     opacity: 0.9;
 }
 
-/* --- MISSION SECTION --- */
 .mission-section {
     padding: 70px 10%;
     background: white;
@@ -102,7 +99,6 @@
     margin-bottom: 0;
 }
 
-/* --- FACTS BAR --- */
 .facts-bar {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -127,7 +123,6 @@
     line-height: 1.1;
 }
 
-/* --- SHARED INFO SECTION --- */
 .info-section {
     padding: 70px 10%;
     background: var(--light-grey);
@@ -153,7 +148,6 @@
     font-size: 1rem;
 }
 
-/* --- INFO GRID & CARDS --- */
 .info-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -186,7 +180,6 @@
     margin: 0;
 }
 
-/* --- SPLIT SECTION (Why Us / Team) --- */
 .split-section {
     padding: 70px 10%;
     background: white;
@@ -241,7 +234,6 @@
     line-height: 1.8;
 }
 
-/* --- TESTIMONIALS --- */
 .testimonials-bg {
     background: var(--dark-grey);
 }
@@ -273,7 +265,6 @@
     font-weight: 600;
 }
 
-/* --- FINAL CTA SECTION --- */
 .final-cta-section {
     padding: 70px 10%;
     background: var(--light-grey);
@@ -343,7 +334,6 @@
     transform: translateY(-2px);
 }
 
-/* --- RESPONSIVE --- */
 @media (max-width: 1024px) {
     .facts-bar {
         grid-template-columns: repeat(2, 1fr);

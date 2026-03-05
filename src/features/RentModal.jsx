@@ -53,7 +53,6 @@ function RentModal({ car, onClose, onConfirm }) {
                     <button className="close-x" onClick={onClose} aria-label="Close modal">&times;</button>
                 </div>
 
-                {/* NEW: Scrollable area for content */}
                 <div className="modal-scroll-area">
                     <div className="modal-top">
                         <div className="car-summary">

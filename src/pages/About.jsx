@@ -22,7 +22,6 @@ function About() {
                 </div>
             </section>
 
-            {/* STRUCTURED MISSION SECTION */}
             <section className="mission-section">
                 <div className="mission-grid-container">
                     <div className="mission-header">
@@ -50,7 +49,6 @@ function About() {
                 </div>
             </section>
 
-            {/* FLEET SECTION */}
             <section className="info-section alternate-bg">
                 <header className="section-header">
                     <h2>The Triple R and A Fleet</h2>
@@ -76,7 +74,6 @@ function About() {
                 </div>
             </section>
 
-            {/* WHY CHOOSE US & TEAM SPLIT */}
             <section className="split-section">
                 <div className="split-content">
                     <div className="why-us-block">
@@ -101,7 +98,6 @@ function About() {
                 </div>
             </section>
 
-            {/* TESTIMONIALS */}
             <section className="info-section testimonials-bg">
                 <div className="section-header">
                     <h2>Customer Voices</h2>
@@ -118,7 +114,6 @@ function About() {
                 </div>
             </section>
 
-            {/* STRUCTURED FINAL CTA */}
             <section className="final-cta-section">
                 <div className="cta-banner">
                     <div className="cta-text">

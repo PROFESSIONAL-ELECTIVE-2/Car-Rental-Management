@@ -11,7 +11,6 @@ function Rent() {
     const [searchQuery, setSearchQuery] = useState(""); 
 
     useEffect(() => {
-        // Updated to use the environment variable or localhost
         const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
         
         fetch(`${API_URL}/api/cars`)
@@ -28,7 +27,6 @@ function Rent() {
 
     const filteredCars = cars.filter(car => {
         const term = searchQuery.toLowerCase();
-        // Safe check for multiple fields
         return [car.name, car.make, car.brand, car.model, car.title, car.type]
             .filter(Boolean)
             .some(field => field.toString().toLowerCase().includes(term));

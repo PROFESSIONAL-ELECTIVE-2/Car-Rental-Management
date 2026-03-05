@@ -15,9 +15,6 @@
     --font-body: 'DM Sans', sans-serif;
 }
 
-/* ============================
-   PAGE LAYOUT
-   ============================ */
 
 .rent-page {
     font-family: var(--font-body);
@@ -25,10 +22,6 @@
     background: var(--light-grey);
     min-height: 100vh;
 }
-
-/* ============================
-   HEADER — Full-bleed editorial
-   ============================ */
 
 .rent-header {
     position: relative;
@@ -38,7 +31,6 @@
     text-align: left;
 }
 
-/* Diagonal accent stripe */
 .rent-header::before {
     content: '';
     position: absolute;
@@ -52,7 +44,6 @@
     pointer-events: none;
 }
 
-/* Gold accent line */
 .rent-header::after {
     content: '';
     position: absolute;
@@ -99,9 +90,6 @@
     animation: fadeSlideUp 0.55s 0.15s ease both;
 }
 
-/* ============================
-   SEARCH BAR WRAPPER
-   ============================ */
 
 .search-wrapper {
     background: white;
@@ -116,7 +104,6 @@
     box-shadow: 0 2px 12px rgba(0,0,0,0.06);
 }
 
-/* SearchBar component gets these styles from parent context */
 .search-wrapper input,
 .search-wrapper .search-bar input,
 .search-wrapper .search-input {
@@ -140,9 +127,6 @@
     background: white;
 }
 
-/* ============================
-   FLEET GRID
-   ============================ */
 
 .fleet-grid {
     display: grid;
@@ -153,11 +137,6 @@
     max-width: 1400px;
     margin: 0 auto;
 }
-
-/* ============================
-   CAR CARD OVERRIDES
-   Cards rendered via <Card /> component — target generic child elements
-   ============================ */
 
 .fleet-grid > * {
     background: var(--surface);
@@ -175,7 +154,6 @@
     margin: 0 auto;
 }
 
-/* Staggered card entrance */
 .fleet-grid > *:nth-child(1)  { animation-delay: 0.05s; }
 .fleet-grid > *:nth-child(2)  { animation-delay: 0.10s; }
 .fleet-grid > *:nth-child(3)  { animation-delay: 0.15s; }
@@ -191,7 +169,6 @@
     box-shadow: var(--card-shadow-hover);
 }
 
-/* Car image */
 .fleet-grid img {
     width: 100%;
     aspect-ratio: 16 / 9;
@@ -204,7 +181,6 @@
     transform: scale(1.04);
 }
 
-/* Card body — generic div child */
 .fleet-grid > * > div {
     padding: 20px 22px 22px;
     display: flex;
@@ -212,7 +188,6 @@
     flex: 1;
 }
 
-/* Card title (h3 or similar) */
 .fleet-grid > * h3,
 .fleet-grid > * .car-name,
 .fleet-grid > * .card-title {
@@ -224,7 +199,6 @@
     line-height: 1.25;
 }
 
-/* Price / badge */
 .fleet-grid > * .car-price,
 .fleet-grid > * .price {
     font-size: 1.1rem;
@@ -233,7 +207,6 @@
     margin-bottom: 8px;
 }
 
-/* Description / secondary text */
 .fleet-grid > * p {
     font-size: 0.88rem;
     color: var(--text-muted);
@@ -241,7 +214,6 @@
     margin: 0 0 16px;
 }
 
-/* Stock badge */
 .fleet-grid > * .stock,
 .fleet-grid > * .car-stock {
     display: inline-block;
@@ -256,14 +228,12 @@
     width: fit-content;
 }
 
-/* Out of stock variant */
 .fleet-grid > *[data-stock="0"] .stock,
 .fleet-grid > * .stock-empty {
     background: #fee2e2;
     color: #991b1b;
 }
 
-/* Rent button */
 .fleet-grid > * button,
 .fleet-grid > * .rent-btn {
     font-family: var(--font-body);
@@ -292,9 +262,6 @@
     transform: none;
 }
 
-/* ============================
-   STATUS STATES
-   ============================ */
 
 .status-message {
     grid-column: 1 / -1;
@@ -308,7 +275,6 @@
     gap: 16px;
 }
 
-/* Animated loading dots */
 .status-message::before {
     content: '';
     display: block;
@@ -334,10 +300,6 @@
 .no-results strong {
     color: var(--primary-blue);
 }
-
-/* ============================
-   ANIMATIONS
-   ============================ */
 
 @keyframes fadeSlideUp {
     from {
@@ -365,9 +327,6 @@
     to { transform: rotate(360deg); }
 }
 
-/* ============================
-   RESPONSIVE
-   ============================ */
 
 @media (max-width: 1100px) {
     .fleet-grid {

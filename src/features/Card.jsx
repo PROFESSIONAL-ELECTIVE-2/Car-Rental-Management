@@ -2,7 +2,6 @@ import React from 'react';
 import Button from '../components/Commons/Button';
 import './Card.css';
 
-// id is often passed as _id from MongoDB, using both for compatibility
 function Card({ _id, id, title, description, image, type, stock = 0, onRent }) {
     const isOutOfStock = stock <= 0;
     const carId = _id || id;

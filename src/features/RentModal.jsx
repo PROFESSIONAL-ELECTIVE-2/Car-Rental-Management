@@ -1,48 +1,51 @@
 import React, { useState } from 'react';
 import Button from '../components/Commons/Button';
-import BookingCalendar from '../components/Layout/BookingCalendar'; 
+import BookingCalendar from '../components/Layout/BookingCalendar';
 import './RentModal.css';
 
 function RentModal({ car, onClose, onConfirm }) {
     const [formData, setFormData] = useState({
-        fullName: '',
+        fullName:   '',
         rentalDays: 1,
-        phone: '',
-        email: '',
+        phone:      '',
+        email:      '',
         pickupDate: ''
     });
+    const [submitting, setSubmitting] = useState(false);
 
     const handleDateChange = ({ start, end }) => {
         if (start && end) {
-            const diffTime = Math.abs(end - start);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-            setFormData({
-                ...formData,
-                pickupDate: start.toISOString().split('T')[0], 
+            const diffDays = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1;
+            setFormData(prev => ({
+                ...prev,
+                pickupDate: start.toISOString().split('T')[0],
                 rentalDays: diffDays
-            });
+            }));
         } else if (start) {
-            setFormData({
-                ...formData,
+            setFormData(prev => ({
+                ...prev,
                 pickupDate: start.toISOString().split('T')[0],
                 rentalDays: 1
-            });
+            }));
         } else {
-            setFormData({
-                ...formData,
-                pickupDate: '',
-                rentalDays: 1
-            });
+            setFormData(prev => ({ ...prev, pickupDate: '', rentalDays: 1 }));
         }
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+
         if (!formData.pickupDate) {
-            alert("Please select rental dates on the calendar.");
+            alert('Please select rental dates on the calendar.');
             return;
         }
-        onConfirm(car._id, formData);
+
+        setSubmitting(true);
+        try {
+            await onConfirm(car._id, formData);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -50,18 +53,16 @@ function RentModal({ car, onClose, onConfirm }) {
             <div className="modal-content booking-modal">
                 <div className="modal-header">
                     <h2>Book This Vehicle</h2>
-                    <button className="close-x" onClick={onClose} aria-label="Close modal">&times;</button>
+                    <button className="close-x" onClick={onClose} aria-label="Close modal" disabled={submitting}>
+                        &times;
+                    </button>
                 </div>
 
                 <div className="modal-scroll-area">
                     <div className="modal-top">
                         <div className="car-summary">
                             <div className="car-image-wrapper">
-                                <img
-                                    src={car.image}
-                                    alt={car.title}
-                                    className="modal-car-image"
-                                />
+                                <img src={car.image} alt={car.title} className="modal-car-image" />
                             </div>
                             <h3 className="modal-car-title">{car.title}</h3>
                             <span className="car-type-tag">{car.type}</span>
@@ -82,7 +83,8 @@ function RentModal({ car, onClose, onConfirm }) {
                                     required
                                     placeholder="Juan Dela Cruz"
                                     value={formData.fullName}
-                                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
+                                    disabled={submitting}
                                 />
                             </div>
 
@@ -94,7 +96,8 @@ function RentModal({ car, onClose, onConfirm }) {
                                         required
                                         placeholder="0912 345 6789"
                                         value={formData.phone}
-                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                                        disabled={submitting}
                                     />
                                 </div>
                                 <div className="form-group">
@@ -104,7 +107,8 @@ function RentModal({ car, onClose, onConfirm }) {
                                         required
                                         placeholder="juan@example.com"
                                         value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                                        disabled={submitting}
                                     />
                                 </div>
                             </div>
@@ -132,11 +136,16 @@ function RentModal({ car, onClose, onConfirm }) {
                             </div>
 
                             <div className="modal-actions">
-                                <button type="button" className="cancel-btn" onClick={onClose}>
+                                <button
+                                    type="button"
+                                    className="cancel-btn"
+                                    onClick={onClose}
+                                    disabled={submitting}
+                                >
                                     Cancel
                                 </button>
-                                <Button type="submit" className="confirm-btn">
-                                    Confirm Booking
+                                <Button type="submit" className="confirm-btn" disabled={submitting}>
+                                    {submitting ? 'Confirming…' : 'Confirm Booking'}
                                 </Button>
                             </div>
                         </form>

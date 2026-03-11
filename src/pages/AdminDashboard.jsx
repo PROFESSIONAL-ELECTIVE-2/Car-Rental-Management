@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './AdminDashboard.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-// ─── Realistic dummy data (mirrors dashboardController.js response shape) ───
 const DUMMY_DATA = {
     revenue: {
         total: 48750,
@@ -28,7 +28,16 @@ const DUMMY_DATA = {
     bookingStats: { pending: 4, active: 10, completed: 87, cancelled: 6 },
 };
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getToken() {
+    return localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
+}
+
+function clearToken() {
+    localStorage.removeItem('adminToken');
+    sessionStorage.removeItem('adminToken');
+}
+
 const formatCurrency = (n) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
 const formatDate = (iso) =>
@@ -36,7 +45,6 @@ const formatDate = (iso) =>
 const shortDay = (dateStr) =>
     new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short' });
 
-// ─── Nav config ──────────────────────────────────────────────────────────────
 const NAV_LINKS = [
     {
         id: 'dashboard', label: 'Dashboard',
@@ -56,12 +64,10 @@ const NAV_LINKS = [
     },
 ];
 
-// ─── StatusBadge ─────────────────────────────────────────────────────────────
 function StatusBadge({ status }) {
     return <span className={`ad-badge ad-badge--${status.toLowerCase()}`}>{status}</span>;
 }
 
-// ─── StatCard ─────────────────────────────────────────────────────────────────
 function StatCard({ title, value, subtitle, icon, accent, index }) {
     return (
         <div className={`ad-stat-card ad-stat-card--${accent}`} style={{ animationDelay: `${index * 0.1}s` }}>
@@ -76,7 +82,6 @@ function StatCard({ title, value, subtitle, icon, accent, index }) {
     );
 }
 
-// ─── RevenueChart (pure CSS bars) ────────────────────────────────────────────
 function RevenueChart({ data }) {
     const max = Math.max(...data.map(d => d.revenue), 1);
     const weekTotal = data.reduce((s, d) => s + d.revenue, 0);
@@ -117,10 +122,9 @@ function RevenueChart({ data }) {
     );
 }
 
-// ─── FleetStatus ──────────────────────────────────────────────────────────────
 function FleetStatus({ fleet, bookingStats }) {
-    const avPct   = (fleet.available   / fleet.total) * 100;
-    const rentPct = (fleet.rented      / fleet.total) * 100;
+    const avPct   = (fleet.available / fleet.total) * 100;
+    const rentPct = (fleet.rented    / fleet.total) * 100;
     const gradient = `conic-gradient(
         var(--accent-gold) 0% ${avPct}%,
         var(--primary-blue) ${avPct}% ${avPct + rentPct}%,
@@ -166,7 +170,6 @@ function FleetStatus({ fleet, bookingStats }) {
     );
 }
 
-// ─── Loading Skeleton ─────────────────────────────────────────────────────────
 function Skeleton() {
     return (
         <div className="ad-skeleton">
@@ -182,31 +185,50 @@ function Skeleton() {
     );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
 export default function AdminDashboard() {
+    const navigate = useNavigate();
+
     const [data, setData]               = useState(null);
     const [loading, setLoading]         = useState(true);
     const [error, setError]             = useState(null);
     const [activeNav, setActiveNav]     = useState('dashboard');
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [notifOpen, setNotifOpen]     = useState(false);
+    const [loggingOut, setLoggingOut]   = useState(false);
+
+    useEffect(() => {
+        if (!getToken()) {
+            navigate('/admin/login', { replace: true });
+        }
+    }, [navigate]);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch(`${API_BASE_URL}/api/dashboard/analytics`);
+            const token = getToken();
+            const res = await fetch(`${API_BASE_URL}/api/dashboard/analytics`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
+
+            
+            if (res.status === 401) {
+                clearToken();
+                navigate('/admin/login', { replace: true });
+                return;
+            }
+
             if (!res.ok) throw new Error(`Status ${res.status}`);
             const json = await res.json();
             if (!json.success) throw new Error(json.message);
             setData(json.data);
         } catch (err) {
             console.warn('[AdminDashboard] API unavailable, using dummy data:', err.message);
-            setData(DUMMY_DATA); // ← swap for setError(err.message) in production
+            setData(DUMMY_DATA);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [navigate]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -216,9 +238,32 @@ export default function AdminDashboard() {
         return () => window.removeEventListener('resize', handler);
     }, []);
 
+    const handleLogout = async () => {
+        if (loggingOut) return;
+        setLoggingOut(true);
+
+        const token = getToken();
+
+        try {
+            if (token) {
+                await fetch(`${API_BASE_URL}/api/admin/logout`, {
+                    method:  'POST',
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                
+            }
+        } catch (err) {
+            console.warn('Logout request failed (network error), clearing token locally anyway.');
+        } finally {
+            
+            clearToken();
+            navigate('/admin/login', { replace: true });
+        }
+    };
+
     const stats = data ? [
-        { title: 'Total Revenue',  value: formatCurrency(data.revenue.total), subtitle: 'All completed bookings',        icon: '💰', accent: 'gold',  index: 0 },
-        { title: 'Active Rentals', value: data.fleet.rented,                  subtitle: `${data.fleet.available} available`, icon: '🚗', accent: 'blue',  index: 1 },
+        { title: 'Total Revenue',  value: formatCurrency(data.revenue.total), subtitle: 'All completed bookings',               icon: '💰', accent: 'gold',  index: 0 },
+        { title: 'Active Rentals', value: data.fleet.rented,                  subtitle: `${data.fleet.available} available`,    icon: '🚗', accent: 'blue',  index: 1 },
         { title: 'Total Fleet',    value: data.fleet.total,                   subtitle: `${data.fleet.maintenance} in maintenance`, icon: '🏎️', accent: 'dark', index: 2 },
     ] : [];
 
@@ -226,7 +271,6 @@ export default function AdminDashboard() {
         <div className="ad-root">
             {sidebarOpen && <div className="ad-overlay" onClick={() => setSidebarOpen(false)} />}
 
-            {/* ══ SIDEBAR ══ */}
             <aside className={`ad-sidebar${sidebarOpen ? ' ad-sidebar--open' : ''}`}>
                 <div className="ad-sidebar__logo">
                     <div className="ad-sidebar__logo-icon">
@@ -284,18 +328,28 @@ export default function AdminDashboard() {
                         </svg>
                         Settings
                     </button>
-                    <button className="ad-sidebar__footer-btn ad-sidebar__footer-btn--logout">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-                        </svg>
-                        Logout
+
+                    <button
+                        className="ad-sidebar__footer-btn ad-sidebar__footer-btn--logout"
+                        onClick={handleLogout}
+                        disabled={loggingOut}
+                        aria-label="Log out of admin panel"
+                    >
+                        {loggingOut ? (
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'ad-spin 0.8s linear infinite' }}>
+                                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                            </svg>
+                        ) : (
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                            </svg>
+                        )}
+                        {loggingOut ? 'Logging out…' : 'Logout'}
                     </button>
                 </div>
             </aside>
 
-            {/* ══ MAIN ══ */}
             <div className="ad-main">
-                {/* Header */}
                 <header className="ad-header">
                     <div className="ad-header__left">
                         <button className="ad-hamburger" onClick={() => setSidebarOpen(v => !v)} aria-label="Toggle sidebar">
@@ -312,7 +366,6 @@ export default function AdminDashboard() {
                     </div>
 
                     <div className="ad-header__right">
-                        {/* Notification bell */}
                         <div className="ad-notif-wrap">
                             <button className="ad-notif-btn" onClick={() => setNotifOpen(v => !v)} aria-label="Notifications">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -341,14 +394,12 @@ export default function AdminDashboard() {
                             )}
                         </div>
 
-                        {/* Refresh */}
                         <button className="ad-refresh-btn" onClick={fetchData} title="Refresh data">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
                             </svg>
                         </button>
 
-                        {/* Avatar */}
                         <div className="ad-avatar-group">
                             <div className="ad-avatar">AD</div>
                             <div className="ad-avatar-info">
@@ -359,7 +410,6 @@ export default function AdminDashboard() {
                     </div>
                 </header>
 
-                {/* Body */}
                 <main className="ad-body">
                     {loading ? (
                         <Skeleton />
@@ -372,15 +422,12 @@ export default function AdminDashboard() {
                         </div>
                     ) : (
                         <>
-                            {/* Stat Cards */}
                             <section className="ad-section">
                                 <p className="ad-section__label">Quick Stats</p>
                                 <div className="ad-stats-grid">
                                     {stats.map(s => <StatCard key={s.title} {...s} />)}
                                 </div>
                             </section>
-
-                            {/* Chart + Fleet */}
                             <section className="ad-section">
                                 <div className="ad-mid-grid">
                                     <RevenueChart data={data.revenue.last7Days} />
@@ -388,7 +435,6 @@ export default function AdminDashboard() {
                                 </div>
                             </section>
 
-                            {/* Bookings Table */}
                             <section className="ad-section">
                                 <div className="ad-table-header">
                                     <div>

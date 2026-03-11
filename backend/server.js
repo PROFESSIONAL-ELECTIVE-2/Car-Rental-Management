@@ -18,6 +18,9 @@ app.use(express.json());
 const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/car_rental';
 const JWT_SECRET = process.env.JWT_SECRET || 'your_fallback_secret_key';
 
+// Tokens added here are rejected even if they haven't expired yet (replay attack prevention)
+const tokenBlacklist = new Set();
+
 const bookingSchema = new mongoose.Schema(
     {
         carId:         { type: mongoose.Schema.Types.ObjectId, ref: 'Car', required: true },
@@ -35,6 +38,29 @@ const bookingSchema = new mongoose.Schema(
 
 const Booking = mongoose.models.Booking || mongoose.model('Booking', bookingSchema, 'bookings');
 
+// Verifies JWT, checks blacklist, and attaches admin info to req
+function requireAdmin(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ message: 'No token provided.' });
+    }
+    const token = authHeader.split(' ')[1];
+    if (tokenBlacklist.has(token)) {
+        return res.status(401).json({ message: 'Session expired. Please log in again.' });
+    }
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        if (decoded.role !== 'admin') {
+            return res.status(403).json({ message: 'Access denied.' });
+        }
+        req.admin = decoded;
+        req.token = token;
+        next();
+    } catch {
+        return res.status(401).json({ message: 'Invalid or expired token.' });
+    }
+}
+
 mongoose.connect(mongoURI)
     .then(() => {
         console.log('--- Database Info ---');
@@ -46,6 +72,7 @@ mongoose.connect(mongoURI)
     })
     .catch(err => console.log('MongoDB Connection Error:', err));
 
+// PUBLIC — fetch all cars
 app.get('/api/cars', async (req, res) => {
     try {
         const cars = await Car.find();
@@ -55,6 +82,7 @@ app.get('/api/cars', async (req, res) => {
     }
 });
 
+// PUBLIC — create a booking and decrement car stock atomically
 app.post('/api/bookings', async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -93,7 +121,7 @@ app.post('/api/bookings', async (req, res) => {
                 endDate:       new Date(endDate),
                 rentalDays:    Number(rentalDays),
                 totalCost,
-                status: 'Pending',
+                status:        'Pending',
             }],
             { session }
         );
@@ -115,7 +143,8 @@ app.post('/api/bookings', async (req, res) => {
     }
 });
 
-app.get('/api/bookings', async (req, res) => {
+// PROTECTED — get all bookings (admin only)
+app.get('/api/bookings', requireAdmin, async (req, res) => {
     try {
         const bookings = await Booking.find()
             .sort({ createdAt: -1 })
@@ -126,7 +155,8 @@ app.get('/api/bookings', async (req, res) => {
     }
 });
 
-app.get('/api/dashboard/analytics', async (req, res) => {
+// PROTECTED — dashboard analytics (admin only)
+app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
     try {
         const revenueAgg = await Booking.aggregate([
             { $match: { status: 'Completed' } },
@@ -200,6 +230,7 @@ app.get('/api/dashboard/analytics', async (req, res) => {
     }
 });
 
+// PUBLIC — admin login
 app.post('/api/admin/login', async (req, res) => {
     const { identifier, password, rememberMe } = req.body;
 
@@ -240,6 +271,13 @@ app.post('/api/admin/login', async (req, res) => {
         console.error('Error:', err);
         res.status(500).json({ message: 'Internal Server Error' });
     }
+});
+
+// PROTECTED — admin logout (blacklists the token to prevent replay attacks)
+app.post('/api/admin/logout', requireAdmin, (req, res) => {
+    tokenBlacklist.add(req.token);
+    console.log(`\nToken blacklisted for admin id: ${req.admin.id}`);
+    res.json({ message: 'Logged out successfully.' });
 });
 
 const PORT = process.env.PORT || 5000;

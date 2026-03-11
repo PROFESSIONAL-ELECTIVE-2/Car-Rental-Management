@@ -6,5 +6,4 @@ const adminSchema = new mongoose.Schema({
     role: { type: String }
 });
 
-// The third argument 'Users' forces Mongoose to use your existing collection
 export default mongoose.model('Admin', adminSchema, 'users');

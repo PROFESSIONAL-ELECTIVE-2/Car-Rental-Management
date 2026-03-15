@@ -230,7 +230,6 @@ app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
     }
 });
 
-// PUBLIC — admin login
 app.post('/api/admin/login', async (req, res) => {
     const { identifier, password, rememberMe } = req.body;
 
@@ -273,7 +272,6 @@ app.post('/api/admin/login', async (req, res) => {
     }
 });
 
-// PROTECTED — admin logout (blacklists the token to prevent replay attacks)
 app.post('/api/admin/logout', requireAdmin, (req, res) => {
     tokenBlacklist.add(req.token);
     console.log(`\nToken blacklisted for admin id: ${req.admin.id}`);

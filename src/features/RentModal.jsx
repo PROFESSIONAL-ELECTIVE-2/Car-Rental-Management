@@ -1,48 +1,421 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Button from '../components/Commons/Button';
 import BookingCalendar from '../components/Layout/BookingCalendar';
 import './RentModal.css';
 
-function RentModal({ car, onClose, onConfirm }) {
-    const [formData, setFormData] = useState({
-        fullName:   '',
-        rentalDays: 1,
-        phone:      '',
-        email:      '',
-        pickupDate: ''
+const LOCATION_GROUPS = [
+    {
+        group: 'Metro Manila',
+        locations: [
+            { id: 'makati',  label: 'Makati',       address: 'Ayala Ave, Makati City' },
+            { id: 'bgc',     label: 'BGC',           address: '9th Ave, Bonifacio Global City' },
+            { id: 'ortigas', label: 'Ortigas',       address: 'Emerald Ave, Pasig City' },
+            { id: 'qc',      label: 'Quezon City',   address: 'Commonwealth Ave, QC' },
+            { id: 'manila',  label: 'Manila',        address: 'Roxas Blvd, Ermita' },
+        ],
+    },
+    {
+        group: 'Airport',
+        locations: [
+            { id: 'naia1', label: 'NAIA Terminal 1', address: 'Paranaque City' },
+            { id: 'naia3', label: 'NAIA Terminal 3', address: 'Paranaque City' },
+        ],
+    },
+    {
+        group: 'Nearby Provinces',
+        locations: [
+            { id: 'cavite',  label: 'Cavite',  address: "Governor's Drive, Cavite City" },
+            { id: 'laguna',  label: 'Laguna',  address: 'National Rd, Calamba, Laguna' },
+            { id: 'bulacan', label: 'Bulacan', address: 'McArthur Hwy, Malolos, Bulacan' },
+        ],
+    },
+];
+
+const ALL_LOCATIONS = LOCATION_GROUPS.flatMap(g =>
+    g.locations.map(l => ({ ...l, group: g.group }))
+);
+
+function resolveLocation(id) {
+    const loc = ALL_LOCATIONS.find(l => l.id === id);
+    return loc ? `${loc.label} — ${loc.address}` : id;
+}
+
+function PinIcon({ size = 16, color = 'currentColor' }) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+            stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+        </svg>
+    );
+}
+
+function TrashIcon() {
+    return (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <path d="M10 11v6M14 11v6"/>
+            <path d="M9 6V4h6v2"/>
+        </svg>
+    );
+}
+
+function ChevronIcon({ open }) {
+    return (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            style={{ transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+            <polyline points="6 9 12 15 18 9"/>
+        </svg>
+    );
+}
+
+function LocationPicker({ value, onChange, disabled }) {
+    const [open, setOpen]       = useState(false);
+    const [query, setQuery]     = useState('');
+    const wrapRef               = useRef(null);
+    const inputRef              = useRef(null);
+    const listRef               = useRef(null);
+    const [focused, setFocused] = useState(-1);
+
+    const selected = ALL_LOCATIONS.find(l => l.id === value) || null;
+
+    const filtered = query.trim()
+        ? ALL_LOCATIONS.filter(l =>
+            l.label.toLowerCase().includes(query.toLowerCase()) ||
+            l.address.toLowerCase().includes(query.toLowerCase()) ||
+            l.group.toLowerCase().includes(query.toLowerCase())
+          )
+        : ALL_LOCATIONS;
+
+    const grouped = LOCATION_GROUPS.map(g => ({
+        group: g.group,
+        locations: filtered.filter(l => l.group === g.group),
+    })).filter(g => g.locations.length > 0);
+
+    useEffect(() => {
+        function handleClick(e) {
+            if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+                setOpen(false);
+                setQuery('');
+            }
+        }
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, []);
+
+    useEffect(() => {
+        if (open) {
+            setFocused(-1);
+            setTimeout(() => inputRef.current?.focus(), 30);
+        }
+    }, [open]);
+
+    function handleSelect(loc) {
+        onChange(loc.id);
+        setOpen(false);
+        setQuery('');
+    }
+
+    function handleKeyDown(e) {
+        if (!open) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(true); }
+            return;
+        }
+        if (e.key === 'Escape') { setOpen(false); setQuery(''); return; }
+        if (e.key === 'ArrowDown') { e.preventDefault(); setFocused(f => Math.min(f + 1, filtered.length - 1)); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); setFocused(f => Math.max(f - 1, 0)); }
+        else if (e.key === 'Enter' && focused >= 0) { e.preventDefault(); handleSelect(filtered[focused]); }
+    }
+
+    useEffect(() => {
+        if (focused >= 0 && listRef.current) {
+            listRef.current.querySelector(`[data-idx="${focused}"]`)?.scrollIntoView({ block: 'nearest' });
+        }
+    }, [focused]);
+
+    let flatIdx = 0;
+
+    return (
+        <div
+            ref={wrapRef}
+            className={`lp-wrap${open ? ' lp-wrap--open' : ''}${disabled ? ' lp-wrap--disabled' : ''}`}
+            onKeyDown={handleKeyDown}
+        >
+            <button
+                type="button"
+                className={`lp-trigger${selected ? ' lp-trigger--selected' : ''}${open ? ' lp-trigger--active' : ''}`}
+                onClick={() => !disabled && setOpen(v => !v)}
+                disabled={disabled}
+                aria-haspopup="listbox"
+                aria-expanded={open}
+            >
+                <span className="lp-trigger__icon">
+                    <PinIcon size={15} color={selected ? 'var(--primary-blue)' : '#9ca3af'} />
+                </span>
+                {selected ? (
+                    <span className="lp-trigger__selected">
+                        <span className="lp-trigger__label">{selected.label}</span>
+                        <span className="lp-trigger__address">{selected.address}</span>
+                    </span>
+                ) : (
+                    <span className="lp-trigger__placeholder">Select a pickup location…</span>
+                )}
+                <span className="lp-trigger__chevron"><ChevronIcon open={open} /></span>
+            </button>
+
+            {open && (
+                <div className="lp-dropdown" role="listbox">
+                    <div className="lp-search-wrap">
+                        <div className="lp-search-inner">
+                            <svg className="lp-search-icon" width="14" height="14" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" strokeWidth="2.5"
+                                strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                className="lp-search"
+                                placeholder="Search locations…"
+                                value={query}
+                                onChange={e => { setQuery(e.target.value); setFocused(-1); }}
+                            />
+                            {query && (
+                                <button type="button" className="lp-search-clear" onClick={() => setQuery('')}>×</button>
+                            )}
+                        </div>
+                    </div>
+                    <div className="lp-list" ref={listRef}>
+                        {grouped.length === 0 ? (
+                            <p className="lp-empty">No locations match "<strong>{query}</strong>"</p>
+                        ) : grouped.map(g => (
+                            <div key={g.group}>
+                                <p className="lp-group-label">{g.group}</p>
+                                {g.locations.map(loc => {
+                                    const idx = flatIdx++;
+                                    return (
+                                        <button key={loc.id} type="button" role="option" data-idx={idx}
+                                            aria-selected={loc.id === value}
+                                            className={`lp-option${loc.id === value ? ' lp-option--selected' : ''}${focused === idx ? ' lp-option--focused' : ''}`}
+                                            onMouseEnter={() => setFocused(idx)}
+                                            onClick={() => handleSelect(loc)}>
+                                            <span className="lp-option__pin">
+                                                <PinIcon size={13} color={loc.id === value ? 'var(--primary-blue)' : '#9ca3af'} />
+                                            </span>
+                                            <span className="lp-option__text">
+                                                <span className="lp-option__label">{loc.label}</span>
+                                                <span className="lp-option__address">{loc.address}</span>
+                                            </span>
+                                            {loc.id === value && (
+                                                <svg className="lp-option__check" width="14" height="14"
+                                                    viewBox="0 0 24 24" fill="none" stroke="var(--primary-blue)"
+                                                    strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                    <polyline points="20 6 9 17 4 12"/>
+                                                </svg>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function CartItem({ item, allCars, onUpdate, onRemove, index }) {
+    const [calOpen, setCalOpen] = useState(index === 0);
+
+    const maxQty = item.car.stock;
+
+    function handleDateChange({ start, end }) {
+        if (start && end) {
+            const days = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1;
+            onUpdate({ pickupDate: start.toISOString().split('T')[0], rentalDays: days });
+        } else if (start) {
+            onUpdate({ pickupDate: start.toISOString().split('T')[0], rentalDays: 1 });
+        } else {
+            onUpdate({ pickupDate: '', rentalDays: 1 });
+        }
+    }
+
+    return (
+        <div className="cart-item">
+            <div className="cart-item__header">
+                <div className="cart-item__vehicle">
+                    <img src={item.car.image} alt={item.car.title} className="cart-item__thumb" />
+                    <div>
+                        <p className="cart-item__title">{item.car.title}</p>
+                        <span className="cart-item__type">{item.car.type}</span>
+                    </div>
+                </div>
+                <div className="cart-item__controls">
+                    <div className="qty-control">
+                        <button type="button" className="qty-btn"
+                            onClick={() => onUpdate({ qty: Math.max(1, item.qty - 1) })}
+                            disabled={item.qty <= 1}>−</button>
+                        <span className="qty-value">{item.qty}</span>
+                        <button type="button" className="qty-btn"
+                            onClick={() => onUpdate({ qty: Math.min(maxQty, item.qty + 1) })}
+                            disabled={item.qty >= maxQty}>+</button>
+                        <span className="qty-stock">/ {maxQty} avail.</span>
+                    </div>
+                    <button type="button" className="cart-item__remove" onClick={onRemove} title="Remove">
+                        <TrashIcon />
+                    </button>
+                </div>
+            </div>
+            <button type="button" className="cart-item__toggle" onClick={() => setCalOpen(v => !v)}>
+                <span>
+                    {item.pickupDate
+                        ? `${item.pickupDate}  ·  ${item.rentalDays} day${item.rentalDays > 1 ? 's' : ''}`
+                        : 'Select dates'}
+                    {item.pickupLocation ? `  ·  ${ALL_LOCATIONS.find(l => l.id === item.pickupLocation)?.label}` : ''}
+                </span>
+                <ChevronIcon open={calOpen} />
+            </button>
+
+            {calOpen && (
+                <div className="cart-item__details">
+                    <div className="cart-item__cal">
+                        <p className="cart-item__section-label">Rental Dates</p>
+                        <BookingCalendar onDateSelect={handleDateChange} />
+                    </div>
+                    <div className="cart-item__loc">
+                        <p className="cart-item__section-label">Pickup Location</p>
+                        <LocationPicker
+                            value={item.pickupLocation}
+                            onChange={(id) => onUpdate({ pickupLocation: id })}
+                        />
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function AddVehiclePanel({ allCars, cartCarIds, onAdd }) {
+    const [open, setOpen] = useState(false);
+    const available = allCars.filter(c => c.stock > 0 && !cartCarIds.includes(c._id));
+
+    if (available.length === 0) return null;
+
+    return (
+        <div className="add-vehicle">
+            <button type="button" className="add-vehicle__trigger" onClick={() => setOpen(v => !v)}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add another vehicle
+                <ChevronIcon open={open} />
+            </button>
+
+            {open && (
+                <div className="add-vehicle__list">
+                    {available.map(car => (
+                        <button key={car._id} type="button" className="add-vehicle__option"
+                            onClick={() => { onAdd(car); setOpen(false); }}>
+                            <img src={car.image} alt={car.title} className="add-vehicle__thumb" />
+                            <div className="add-vehicle__info">
+                                <span className="add-vehicle__title">{car.title}</span>
+                                <span className="add-vehicle__meta">{car.type} · {car.stock} available</span>
+                            </div>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                stroke="var(--primary-blue)" strokeWidth="2.5"
+                                strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function RentModal({ car, allCars = [], onClose, onConfirm }) {
+    const [customer, setCustomer] = useState({
+        fullName: '',
+        phone:    '',
+        email:    '',
     });
+
+    const [cart, setCart] = useState([{
+        car,
+        qty:            1,
+        pickupDate:     '',
+        rentalDays:     1,
+        pickupLocation: '',
+    }]);
+
     const [submitting, setSubmitting] = useState(false);
 
-    const handleDateChange = ({ start, end }) => {
-        if (start && end) {
-            const diffDays = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1;
-            setFormData(prev => ({
-                ...prev,
-                pickupDate: start.toISOString().split('T')[0],
-                rentalDays: diffDays
-            }));
-        } else if (start) {
-            setFormData(prev => ({
-                ...prev,
-                pickupDate: start.toISOString().split('T')[0],
-                rentalDays: 1
-            }));
-        } else {
-            setFormData(prev => ({ ...prev, pickupDate: '', rentalDays: 1 }));
-        }
-    };
+    const updateItem = useCallback((index, patch) => {
+        setCart(prev => prev.map((item, i) => i === index ? { ...item, ...patch } : item));
+    }, []);
+
+    const removeItem = useCallback((index) => {
+        setCart(prev => prev.filter((_, i) => i !== index));
+    }, []);
+
+    const addVehicle = useCallback((newCar) => {
+        setCart(prev => [...prev, {
+            car:            newCar,
+            qty:            1,
+            pickupDate:     '',
+            rentalDays:     1,
+            pickupLocation: '',
+        }]);
+    }, []);
+
+    const cartCarIds = cart.map(i => i.car._id);
+
+    const totalCost = cart.reduce((sum, item) => {
+        const rate = item.car.dailyRate ?? 0;
+        return sum + rate * item.qty * item.rentalDays;
+    }, 0);
+    const totalVehicles = cart.reduce((sum, i) => sum + i.qty, 0);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!formData.pickupDate) {
-            alert('Please select rental dates on the calendar.');
-            return;
+        for (let i = 0; i < cart.length; i++) {
+            const item = cart[i];
+            if (!item.pickupDate) {
+                alert(`Please select rental dates for: ${item.car.title}`);
+                return;
+            }
+            if (!item.pickupLocation) {
+                alert(`Please select a pickup location for: ${item.car.title}`);
+                return;
+            }
         }
 
         setSubmitting(true);
         try {
-            await onConfirm(car._id, formData);
+            const bookings = cart.map(item => ({
+                carId:          item.car._id,
+                qty:            item.qty,
+                customerName:   customer.fullName,
+                customerEmail:  customer.email,
+                customerPhone:  customer.phone,
+                startDate:      new Date(item.pickupDate).toISOString(),
+                endDate:        (() => {
+                    const d = new Date(item.pickupDate);
+                    d.setDate(d.getDate() + item.rentalDays - 1);
+                    return d.toISOString();
+                })(),
+                rentalDays:     item.rentalDays,
+                pickupLocation: resolveLocation(item.pickupLocation),
+            }));
+
+            await onConfirm(bookings);
         } finally {
             setSubmitting(false);
         }
@@ -50,102 +423,95 @@ function RentModal({ car, onClose, onConfirm }) {
 
     return (
         <div className="modal-overlay">
-            <div className="modal-content booking-modal">
+            <div className="modal-content booking-modal booking-modal--wide">
                 <div className="modal-header">
-                    <h2>Book This Vehicle</h2>
-                    <button className="close-x" onClick={onClose} aria-label="Close modal" disabled={submitting}>
-                        &times;
-                    </button>
+                    <div>
+                        <h2>Book Your Vehicles</h2>
+                        <p className="modal-header__sub">
+                            {totalVehicles} vehicle{totalVehicles !== 1 ? 's' : ''} · {cart.length} type{cart.length !== 1 ? 's' : ''}
+                        </p>
+                    </div>
+                    <button className="close-x" onClick={onClose} disabled={submitting}>&times;</button>
                 </div>
 
-                <div className="modal-scroll-area">
-                    <div className="modal-top">
-                        <div className="car-summary">
-                            <div className="car-image-wrapper">
-                                <img src={car.image} alt={car.title} className="modal-car-image" />
-                            </div>
-                            <h3 className="modal-car-title">{car.title}</h3>
-                            <span className="car-type-tag">{car.type}</span>
+                <div className="modal-body-split">
+                    <div className="modal-left">
+                        <p className="modal-section-label">Your Selection</p>
+
+                        <div className="cart-list">
+                            {cart.map((item, i) => (
+                                <CartItem
+                                    key={item.car._id}
+                                    item={item}
+                                    allCars={allCars}
+                                    index={i}
+                                    onUpdate={(patch) => updateItem(i, patch)}
+                                    onRemove={() => removeItem(i)}
+                                />
+                            ))}
                         </div>
 
-                        <div className="calendar-section">
-                            <label className="form-label">Select Rental Dates</label>
-                            <BookingCalendar onDateSelect={handleDateChange} />
+                        <AddVehiclePanel
+                            allCars={allCars}
+                            cartCarIds={cartCarIds}
+                            onAdd={addVehicle}
+                        />
+
+                        <div className="order-summary">
+                            <p className="order-summary__label">Order Summary</p>
+                            {cart.map(item => (
+                                <div key={item.car._id} className="order-summary__row">
+                                    <span>{item.car.title} × {item.qty} · {item.rentalDays}d</span>
+                                    <span>
+                                        {item.car.dailyRate
+                                            ? `₱${(item.car.dailyRate * item.qty * item.rentalDays).toLocaleString()}`
+                                            : '—'}
+                                    </span>
+                                </div>
+                            ))}
+                            {totalCost > 0 && (
+                                <div className="order-summary__total">
+                                    <span>Total</span>
+                                    <span>₱{totalCost.toLocaleString()}</span>
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    <div className="modal-bottom">
+                    <div className="modal-right">
+                        <p className="modal-section-label">Your Details</p>
+
                         <form onSubmit={handleSubmit} className="rental-form">
                             <div className="form-group">
                                 <label>Full Name</label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="Juan Dela Cruz"
-                                    value={formData.fullName}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
-                                    disabled={submitting}
-                                />
+                                <input type="text" required placeholder="Juan Dela Cruz"
+                                    value={customer.fullName}
+                                    onChange={e => setCustomer(p => ({ ...p, fullName: e.target.value }))}
+                                    disabled={submitting} />
                             </div>
 
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>Phone Number</label>
-                                    <input
-                                        type="tel"
-                                        required
-                                        placeholder="0912 345 6789"
-                                        value={formData.phone}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                                        disabled={submitting}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Email Address</label>
-                                    <input
-                                        type="email"
-                                        required
-                                        placeholder="juan@example.com"
-                                        value={formData.email}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                                        disabled={submitting}
-                                    />
-                                </div>
+                            <div className="form-group">
+                                <label>Phone Number</label>
+                                <input type="tel" required placeholder="0912 345 6789"
+                                    value={customer.phone}
+                                    onChange={e => setCustomer(p => ({ ...p, phone: e.target.value }))}
+                                    disabled={submitting} />
                             </div>
 
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>Pickup Date</label>
-                                    <input
-                                        type="text"
-                                        readOnly
-                                        placeholder="Select from calendar"
-                                        value={formData.pickupDate}
-                                        className="readonly-input"
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Total Days</label>
-                                    <input
-                                        type="number"
-                                        readOnly
-                                        value={formData.rentalDays}
-                                        className="readonly-input"
-                                    />
-                                </div>
+                            <div className="form-group">
+                                <label>Email Address</label>
+                                <input type="email" required placeholder="juan@example.com"
+                                    value={customer.email}
+                                    onChange={e => setCustomer(p => ({ ...p, email: e.target.value }))}
+                                    disabled={submitting} />
                             </div>
 
                             <div className="modal-actions">
-                                <button
-                                    type="button"
-                                    className="cancel-btn"
-                                    onClick={onClose}
-                                    disabled={submitting}
-                                >
+                                <button type="button" className="cancel-btn" onClick={onClose} disabled={submitting}>
                                     Cancel
                                 </button>
-                                <Button type="submit" className="confirm-btn" disabled={submitting}>
-                                    {submitting ? 'Confirming…' : 'Confirm Booking'}
+                                <Button type="submit" className="confirm-btn" disabled={submitting || cart.length === 0}>
+                                    {submitting ? 'Confirming…' : `Confirm ${totalVehicles} Vehicle${totalVehicles !== 1 ? 's' : ''}`}
                                 </Button>
                             </div>
                         </form>

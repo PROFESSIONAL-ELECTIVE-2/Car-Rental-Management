@@ -8,11 +8,8 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 async function safeJson(res) {
     const text = await res.text();
-    try {
-        return JSON.parse(text);
-    } catch {
-        throw new Error(`Server returned an unexpected response (HTTP ${res.status}). Is the backend running on ${API_URL}?`);
-    }
+    try { return JSON.parse(text); }
+    catch { throw new Error(`Server error (HTTP ${res.status}). Is the backend running?`); }
 }
 
 function Rent() {
@@ -26,10 +23,8 @@ function Rent() {
         try {
             setLoading(true);
             setError(null);
-
             const res  = await fetch(`${API_URL}/api/cars`);
             const data = await safeJson(res);
-
             if (!res.ok) throw new Error(data.message || `Server error: ${res.status}`);
             setCars(Array.isArray(data) ? data : []);
         } catch (err) {
@@ -49,38 +44,32 @@ function Rent() {
             .some(field => field.toString().toLowerCase().includes(term));
     });
 
-    const handleRentConfirm = async (carId, details) => {
+    // Handles a batch of bookings — one per cart item
+    // bookings = [{ carId, qty, customerName, customerEmail, customerPhone,
+    //               startDate, endDate, rentalDays, pickupLocation }, ...]
+    const handleRentConfirm = async (bookings) => {
         try {
-            const startDate = new Date(details.pickupDate);
-            const endDate   = new Date(startDate);
-            endDate.setDate(endDate.getDate() + (details.rentalDays - 1));
-
-            const bookingPayload = {
-                carId,
-                customerName:  details.fullName,
-                customerEmail: details.email,
-                customerPhone: details.phone,
-                startDate:     startDate.toISOString(),
-                endDate:       endDate.toISOString(),
-                rentalDays:    details.rentalDays,
-            };
-
-            const res    = await fetch(`${API_URL}/api/bookings`, {
+            const res = await fetch(`${API_URL}/api/bookings/batch`, {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify(bookingPayload),
+                body:    JSON.stringify({ bookings }),
             });
 
             const result = await safeJson(res);
+            if (!res.ok) throw new Error(result.message || 'Booking failed.');
 
-            if (!res.ok) throw new Error(result.message || 'Booking failed. Please try again.');
-
-            setCars(prev =>
-                prev.map(c => c._id === carId ? { ...c, stock: Math.max(0, c.stock - 1) } : c)
-            );
+            // Decrement stock locally for each booked vehicle
+            setCars(prev => prev.map(c => {
+                const booked = bookings.find(b => b.carId === c._id);
+                return booked
+                    ? { ...c, stock: Math.max(0, c.stock - booked.qty) }
+                    : c;
+            }));
 
             setSelectedCar(null);
-            alert(`✅ Booking confirmed! Reference: ${result.booking?._id ?? 'N/A'}`);
+
+            const refs = result.bookings?.map(b => b._id).join(', ') ?? 'N/A';
+            alert(`✅ Booking confirmed!\nReference IDs: ${refs}`);
 
         } catch (err) {
             console.error('Booking error:', err);
@@ -102,23 +91,15 @@ function Rent() {
             />
 
             <main className="fleet-grid">
-                {loading && (
-                    <p className="status-message">Loading vehicles...</p>
-                )}
-
-                {!loading && error && (
-                    <p className="error-message">{error}</p>
-                )}
-
+                {loading && <p className="status-message">Loading vehicles...</p>}
+                {!loading && error && <p className="error-message">{error}</p>}
                 {!loading && !error && filteredCars.length === 0 && (
                     <div className="no-results">
                         {searchQuery
                             ? <>No cars found for "<strong>{searchQuery}</strong>"</>
-                            : 'No vehicles available at the moment.'
-                        }
+                            : 'No vehicles available at the moment.'}
                     </div>
                 )}
-
                 {!loading && !error && filteredCars.map(car => (
                     <Card
                         key={car._id}
@@ -132,6 +113,7 @@ function Rent() {
             {selectedCar && (
                 <RentModal
                     car={selectedCar}
+                    allCars={cars}          // pass full list so user can add more vehicles
                     onClose={() => setSelectedCar(null)}
                     onConfirm={handleRentConfirm}
                 />

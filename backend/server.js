@@ -15,30 +15,30 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/car_rental';
-const JWT_SECRET = process.env.JWT_SECRET || 'your_fallback_secret_key';
+const mongoURI  = process.env.MONGODB_URI  || 'mongodb://localhost:27017/car_rental';
+const JWT_SECRET = process.env.JWT_SECRET  || 'your_fallback_secret_key';
 
-// Tokens added here are rejected even if they haven't expired yet (replay attack prevention)
 const tokenBlacklist = new Set();
 
 const bookingSchema = new mongoose.Schema(
     {
-        carId:         { type: mongoose.Schema.Types.ObjectId, ref: 'Car', required: true },
-        customerName:  { type: String, required: true, trim: true },
-        customerEmail: { type: String, trim: true, lowercase: true },
-        customerPhone: { type: String, trim: true },
-        startDate:     { type: Date, required: true },
-        endDate:       { type: Date, required: true },
-        rentalDays:    { type: Number, required: true, min: 1 },
-        totalCost:     { type: Number, default: 0 },
-        status:        { type: String, enum: ['Pending', 'Active', 'Completed', 'Cancelled'], default: 'Pending' },
+        carId:          { type: mongoose.Schema.Types.ObjectId, ref: 'Car', required: true },
+        qty:            { type: Number, required: true, min: 1, default: 1 },
+        customerName:   { type: String, required: true, trim: true },
+        customerEmail:  { type: String, trim: true, lowercase: true },
+        customerPhone:  { type: String, trim: true },
+        startDate:      { type: Date, required: true },
+        endDate:        { type: Date, required: true },
+        rentalDays:     { type: Number, required: true, min: 1 },
+        pickupLocation: { type: String, trim: true },
+        totalCost:      { type: Number, default: 0 },
+        status:         { type: String, enum: ['Pending', 'Active', 'Completed', 'Cancelled'], default: 'Pending' },
     },
     { timestamps: true }
 );
 
 const Booking = mongoose.models.Booking || mongoose.model('Booking', bookingSchema, 'bookings');
 
-// Verifies JWT, checks blacklist, and attaches admin info to req
 function requireAdmin(req, res, next) {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
@@ -72,7 +72,6 @@ mongoose.connect(mongoURI)
     })
     .catch(err => console.log('MongoDB Connection Error:', err));
 
-// PUBLIC — fetch all cars
 app.get('/api/cars', async (req, res) => {
     try {
         const cars = await Car.find();
@@ -82,12 +81,14 @@ app.get('/api/cars', async (req, res) => {
     }
 });
 
-// PUBLIC — create a booking and decrement car stock atomically
 app.post('/api/bookings', async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const { carId, customerName, customerEmail, customerPhone, startDate, endDate, rentalDays } = req.body;
+        const {
+            carId, qty = 1, customerName, customerEmail,
+            customerPhone, startDate, endDate, rentalDays, pickupLocation,
+        } = req.body;
 
         if (!carId || !customerName || !startDate || !endDate || !rentalDays) {
             await session.abortTransaction();
@@ -96,39 +97,38 @@ app.post('/api/bookings', async (req, res) => {
         }
 
         const car = await Car.findById(carId).session(session);
-
         if (!car) {
             await session.abortTransaction();
             session.endSession();
             return res.status(404).json({ message: 'Car not found.' });
         }
-
-        if (car.stock <= 0) {
+        if (car.stock < Number(qty)) {
             await session.abortTransaction();
             session.endSession();
-            return res.status(400).json({ message: 'This vehicle is currently out of stock.' });
+            return res.status(400).json({ message: `Only ${car.stock} unit(s) available for ${car.title}.` });
         }
 
-        const totalCost = (car.dailyRate ?? 0) * Number(rentalDays);
+        const totalCost = (car.dailyRate ?? 0) * Number(qty) * Number(rentalDays);
 
         const [booking] = await Booking.create(
             [{
                 carId,
-                customerName:  customerName.trim(),
-                customerEmail: customerEmail?.trim() || '',
-                customerPhone: customerPhone?.trim() || '',
-                startDate:     new Date(startDate),
-                endDate:       new Date(endDate),
-                rentalDays:    Number(rentalDays),
+                qty:            Number(qty),
+                customerName:   customerName.trim(),
+                customerEmail:  customerEmail?.trim()  || '',
+                customerPhone:  customerPhone?.trim()  || '',
+                startDate:      new Date(startDate),
+                endDate:        new Date(endDate),
+                rentalDays:     Number(rentalDays),
+                pickupLocation: pickupLocation || '',
                 totalCost,
-                status:        'Pending',
+                status: 'Pending',
             }],
             { session }
         );
 
-        car.stock -= 1;
+        car.stock -= Number(qty);
         await car.save({ session });
-
         await session.commitTransaction();
         session.endSession();
 
@@ -143,90 +143,83 @@ app.post('/api/bookings', async (req, res) => {
     }
 });
 
-// PROTECTED — get all bookings (admin only)
-app.get('/api/bookings', requireAdmin, async (req, res) => {
-    try {
-        const bookings = await Booking.find()
-            .sort({ createdAt: -1 })
-            .populate('carId', 'title type image');
-        res.json(bookings);
-    } catch (err) {
-        res.status(500).json({ message: 'Server Error: Could not retrieve bookings.' });
+app.post('/api/bookings/batch', async (req, res) => {
+    const { bookings } = req.body;
+
+    if (!Array.isArray(bookings) || bookings.length === 0) {
+        return res.status(400).json({ message: 'bookings array is required.' });
     }
-});
 
-// PROTECTED — dashboard analytics (admin only)
-app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
-        const revenueAgg = await Booking.aggregate([
-            { $match: { status: 'Completed' } },
-            { $group: { _id: null, total: { $sum: '$totalCost' } } },
-        ]);
-        const totalRevenue = revenueAgg[0]?.total ?? 0;
+        const created = [];
 
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        sevenDaysAgo.setHours(0, 0, 0, 0);
+        for (const item of bookings) {
+            const {
+                carId, qty = 1, customerName, customerEmail,
+                customerPhone, startDate, endDate, rentalDays, pickupLocation,
+            } = item;
 
-        const dailyRevenue = await Booking.aggregate([
-            { $match: { status: 'Completed', updatedAt: { $gte: sevenDaysAgo } } },
-            { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$updatedAt' } }, revenue: { $sum: '$totalCost' } } },
-            { $sort: { _id: 1 } },
-        ]);
+            if (!carId || !customerName || !startDate || !endDate || !rentalDays) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(400).json({ message: 'Missing required fields in one or more bookings.' });
+            }
 
-        const last7Days = [];
-        for (let i = 6; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            const dateStr = d.toISOString().split('T')[0];
-            const found = dailyRevenue.find(r => r._id === dateStr);
-            last7Days.push({ date: dateStr, revenue: found?.revenue ?? 0 });
+            const car = await Car.findById(carId).session(session);
+            if (!car) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(404).json({ message: `Car not found: ${carId}` });
+            }
+            if (car.stock < Number(qty)) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(400).json({
+                    message: `Insufficient stock for "${car.title}". Requested: ${qty}, available: ${car.stock}.`,
+                });
+            }
+
+            const totalCost = (car.dailyRate ?? 0) * Number(qty) * Number(rentalDays);
+
+            const [booking] = await Booking.create(
+                [{
+                    carId,
+                    qty:            Number(qty),
+                    customerName:   customerName.trim(),
+                    customerEmail:  customerEmail?.trim()  || '',
+                    customerPhone:  customerPhone?.trim()  || '',
+                    startDate:      new Date(startDate),
+                    endDate:        new Date(endDate),
+                    rentalDays:     Number(rentalDays),
+                    pickupLocation: pickupLocation || '',
+                    totalCost,
+                    status: 'Pending',
+                }],
+                { session }
+            );
+
+            car.stock -= Number(qty);
+            await car.save({ session });
+            created.push(booking);
+            console.log(`Batch booking: ${booking._id} | ${car.title} × ${qty}`);
         }
 
-        const fleetAgg = await Car.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]);
-        const fleetMap = fleetAgg.reduce((acc, x) => { acc[x._id] = x.count; return acc; }, {});
-        const totalCars = await Car.countDocuments();
+        await session.commitTransaction();
+        session.endSession();
 
-        const fleet = {
-            total:       totalCars,
-            available:   fleetMap['Available']   ?? 0,
-            rented:      fleetMap['Rented']      ?? 0,
-            maintenance: fleetMap['Maintenance'] ?? 0,
-        };
-
-        const recent = await Booking.find()
-            .sort({ createdAt: -1 })
-            .limit(5)
-            .populate('carId', 'title type licensePlate')
-            .lean();
-
-        const recentBookings = recent.map(b => ({
-            id:            b._id,
-            customerName:  b.customerName,
-            customerEmail: b.customerEmail || 'N/A',
-            car:           b.carId?.title || 'Unknown Vehicle',
-            licensePlate:  b.carId?.licensePlate || '—',
-            startDate:     b.startDate,
-            endDate:       b.endDate,
-            totalCost:     b.totalCost,
-            status:        b.status,
-            createdAt:     b.createdAt,
-        }));
-
-        const statusAgg = await Booking.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]);
-        const bookingStats = statusAgg.reduce(
-            (acc, x) => { acc[x._id.toLowerCase()] = x.count; return acc; },
-            { pending: 0, active: 0, completed: 0, cancelled: 0 }
-        );
-
-        return res.status(200).json({
-            success: true,
-            data: { revenue: { total: totalRevenue, last7Days }, fleet, recentBookings, bookingStats },
+        return res.status(201).json({
+            message:  `${created.length} booking(s) created successfully!`,
+            bookings: created,
         });
 
     } catch (err) {
-        console.error('Dashboard analytics error:', err);
-        res.status(500).json({ success: false, message: 'Server Error: Could not load analytics.' });
+        await session.abortTransaction();
+        session.endSession();
+        console.error('Batch booking error:', err);
+        return res.status(500).json({ message: 'Server Error: Could not process batch booking.' });
     }
 });
 
@@ -234,18 +227,20 @@ app.post('/api/admin/login', async (req, res) => {
     const { identifier, password, rememberMe } = req.body;
 
     console.log('\n--- Login Attempt ---');
-    console.log('Searching for:', identifier, 'in collection:', Admin.collection.name);
+    console.log('Searching for:', identifier, 'as username or email');
 
     try {
         const user = await Admin.findOne({
-            username: { $regex: new RegExp(`^${identifier}$`, 'i') }
+            $or: [
+                { username: { $regex: new RegExp(`^${identifier}$`, 'i') } },
+                { email:    { $regex: new RegExp(`^${identifier}$`, 'i') } },
+            ],
         });
 
         if (!user) {
             console.log('Result: User not found');
             return res.status(401).json({ message: 'User not found.' });
         }
-
         if (user.role !== 'admin') {
             console.log('Result: Role is', user.role, 'not admin');
             return res.status(403).json({ message: 'Access denied.' });
@@ -276,6 +271,170 @@ app.post('/api/admin/logout', requireAdmin, (req, res) => {
     tokenBlacklist.add(req.token);
     console.log(`\nToken blacklisted for admin id: ${req.admin.id}`);
     res.json({ message: 'Logged out successfully.' });
+});
+
+app.get('/api/bookings', requireAdmin, async (req, res) => {
+    try {
+        const bookings = await Booking.find()
+            .sort({ createdAt: -1 })
+            .populate('carId', 'title type image');
+        res.json(bookings);
+    } catch (err) {
+        res.status(500).json({ message: 'Server Error: Could not retrieve bookings.' });
+    }
+});
+
+app.put('/api/admin/bookings/:id/status', requireAdmin, async (req, res) => {
+    const { status } = req.body;
+    const allowed = ['Pending', 'Active', 'Completed', 'Cancelled'];
+    if (!allowed.includes(status)) {
+        return res.status(400).json({ message: `Invalid status. Must be one of: ${allowed.join(', ')}` });
+    }
+    try {
+        const booking = await Booking.findByIdAndUpdate(
+            req.params.id,
+            { status },
+            { new: true }
+        ).populate('carId', 'title type image');
+        if (!booking) return res.status(404).json({ message: 'Booking not found.' });
+        console.log(`Booking ${booking._id} → ${status}`);
+        res.json({ message: 'Status updated.', booking });
+    } catch (err) {
+        console.error('Status update error:', err);
+        res.status(500).json({ message: 'Server Error: Could not update status.' });
+    }
+});
+
+app.get('/api/admin/cars', requireAdmin, async (req, res) => {
+    try {
+        const cars = await Car.find().sort({ createdAt: -1 });
+        res.json(cars);
+    } catch (err) {
+        res.status(500).json({ message: 'Server Error: Could not retrieve cars.' });
+    }
+});
+
+app.post('/api/admin/cars', requireAdmin, async (req, res) => {
+    try {
+        const { title, description, image, type, stock, dailyRate } = req.body;
+        if (!title || !description || !image || !type) {
+            return res.status(400).json({ message: 'title, description, image, and type are required.' });
+        }
+        const car = await Car.create({
+            title, description, image, type,
+            stock:     Number(stock)     || 1,
+            dailyRate: Number(dailyRate) || 0,
+        });
+        console.log(`New car added: ${car.title}`);
+        res.status(201).json({ message: 'Car added successfully.', car });
+    } catch (err) {
+        console.error('Add car error:', err);
+        res.status(500).json({ message: 'Server Error: Could not add car.' });
+    }
+});
+
+app.put('/api/admin/cars/:id', requireAdmin, async (req, res) => {
+    try {
+        const { title, description, image, type, stock, dailyRate } = req.body;
+        const update = {};
+        if (title       !== undefined) update.title       = title;
+        if (description !== undefined) update.description = description;
+        if (image       !== undefined) update.image       = image;
+        if (type        !== undefined) update.type        = type;
+        if (stock       !== undefined) update.stock       = Math.max(0, Number(stock));
+        if (dailyRate   !== undefined) update.dailyRate   = Math.max(0, Number(dailyRate));
+
+        const car = await Car.findByIdAndUpdate(req.params.id, update, { new: true });
+        if (!car) return res.status(404).json({ message: 'Car not found.' });
+        res.json({ message: 'Car updated.', car });
+    } catch (err) {
+        console.error('Update car error:', err);
+        res.status(500).json({ message: 'Server Error: Could not update car.' });
+    }
+});
+
+app.delete('/api/admin/cars/:id', requireAdmin, async (req, res) => {
+    try {
+        const car = await Car.findByIdAndDelete(req.params.id);
+        if (!car) return res.status(404).json({ message: 'Car not found.' });
+        console.log(`Car deleted: ${car.title}`);
+        res.json({ message: `"${car.title}" deleted successfully.` });
+    } catch (err) {
+        console.error('Delete car error:', err);
+        res.status(500).json({ message: 'Server Error: Could not delete car.' });
+    }
+});
+
+app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
+    try {
+        const revenueAgg = await Booking.aggregate([
+            { $match: { status: 'Completed' } },
+            { $group: { _id: null, total: { $sum: '$totalCost' } } },
+        ]);
+        const totalRevenue = revenueAgg[0]?.total ?? 0;
+
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        sevenDaysAgo.setHours(0, 0, 0, 0);
+
+        const dailyRevenue = await Booking.aggregate([
+            { $match: { status: 'Completed', updatedAt: { $gte: sevenDaysAgo } } },
+            { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$updatedAt' } }, revenue: { $sum: '$totalCost' } } },
+            { $sort: { _id: 1 } },
+        ]);
+
+        const last7Days = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            last7Days.push({ date: dateStr, revenue: dailyRevenue.find(r => r._id === dateStr)?.revenue ?? 0 });
+        }
+
+        const fleetAgg = await Car.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]);
+        const fleetMap = fleetAgg.reduce((acc, x) => { acc[x._id] = x.count; return acc; }, {});
+        const fleet = {
+            total:       await Car.countDocuments(),
+            available:   fleetMap['Available']   ?? 0,
+            rented:      fleetMap['Rented']       ?? 0,
+            maintenance: fleetMap['Maintenance']  ?? 0,
+        };
+
+        const recent = await Booking.find()
+            .sort({ createdAt: -1 })
+            .limit(5)
+            .populate('carId', 'title type licensePlate')
+            .lean();
+
+        const recentBookings = recent.map(b => ({
+            id:            b._id,
+            customerName:  b.customerName,
+            customerEmail: b.customerEmail || 'N/A',
+            car:           b.carId?.title  || 'Unknown Vehicle',
+            licensePlate:  b.carId?.licensePlate || '—',
+            qty:           b.qty ?? 1,
+            startDate:     b.startDate,
+            endDate:       b.endDate,
+            totalCost:     b.totalCost,
+            status:        b.status,
+            createdAt:     b.createdAt,
+        }));
+
+        const statusAgg = await Booking.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]);
+        const bookingStats = statusAgg.reduce(
+            (acc, x) => { acc[x._id.toLowerCase()] = x.count; return acc; },
+            { pending: 0, active: 0, completed: 0, cancelled: 0 }
+        );
+
+        return res.status(200).json({
+            success: true,
+            data: { revenue: { total: totalRevenue, last7Days }, fleet, recentBookings, bookingStats },
+        });
+
+    } catch (err) {
+        console.error('Dashboard analytics error:', err);
+        res.status(500).json({ success: false, message: 'Server Error: Could not load analytics.' });
+    }
 });
 
 const PORT = process.env.PORT || 5000;

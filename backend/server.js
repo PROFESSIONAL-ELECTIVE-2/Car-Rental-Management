@@ -39,6 +39,19 @@ const bookingSchema = new mongoose.Schema(
 
 const Booking = mongoose.models.Booking || mongoose.model('Booking', bookingSchema, 'bookings');
 
+const messageSchema = new mongoose.Schema(
+    {
+        name:    { type: String, required: true, trim: true },
+        email:   { type: String, required: true, trim: true, lowercase: true },
+        subject: { type: String, trim: true },
+        message: { type: String, required: true, trim: true },
+        status:  { type: String, enum: ['Unread', 'Read', 'Archived'], default: 'Unread' },
+    },
+    { timestamps: true }
+);
+
+const Message = mongoose.models.Message || mongoose.model('Message', messageSchema, 'messages');
+
 function requireAdmin(req, res, next) {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
@@ -223,6 +236,26 @@ app.post('/api/bookings/batch', async (req, res) => {
     }
 });
 
+app.post('/api/messages', async (req, res) => {
+    try {
+        const { name, email, subject, message } = req.body;
+        if (!name || !email || !message) {
+            return res.status(400).json({ message: 'Name, email, and message are required.' });
+        }
+        const msg = await Message.create({
+            name: name.trim(),
+            email: email.trim().toLowerCase(),
+            subject: subject?.trim() || '',
+            message: message.trim(),
+        });
+        console.log(`New message from: ${msg.email}`);
+        return res.status(201).json({ message: 'Message received. Thank you!', id: msg._id });
+    } catch (err) {
+        console.error('Message error:', err);
+        res.status(500).json({ message: 'Server Error: Could not save message.' });
+    }
+});
+
 app.post('/api/admin/login', async (req, res) => {
     const { identifier, password, rememberMe } = req.body;
 
@@ -266,6 +299,7 @@ app.post('/api/admin/login', async (req, res) => {
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
+
 
 app.post('/api/admin/logout', requireAdmin, (req, res) => {
     tokenBlacklist.add(req.token);
@@ -353,6 +387,7 @@ app.put('/api/admin/cars/:id', requireAdmin, async (req, res) => {
     }
 });
 
+// DELETE remove car
 app.delete('/api/admin/cars/:id', requireAdmin, async (req, res) => {
     try {
         const car = await Car.findByIdAndDelete(req.params.id);
@@ -365,6 +400,7 @@ app.delete('/api/admin/cars/:id', requireAdmin, async (req, res) => {
     }
 });
 
+// GET dashboard analytics
 app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
     try {
         const revenueAgg = await Booking.aggregate([
@@ -434,6 +470,40 @@ app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
     } catch (err) {
         console.error('Dashboard analytics error:', err);
         res.status(500).json({ success: false, message: 'Server Error: Could not load analytics.' });
+    }
+});
+
+app.get('/api/admin/messages', requireAdmin, async (req, res) => {
+    try {
+        const messages = await Message.find().sort({ createdAt: -1 });
+        res.json(messages);
+    } catch (err) {
+        res.status(500).json({ message: 'Server Error: Could not retrieve messages.' });
+    }
+});
+
+app.put('/api/admin/messages/:id/status', requireAdmin, async (req, res) => {
+    const { status } = req.body;
+    const allowed = ['Unread', 'Read', 'Archived'];
+    if (!allowed.includes(status)) {
+        return res.status(400).json({ message: `Invalid status. Must be one of: ${allowed.join(', ')}` });
+    }
+    try {
+        const msg = await Message.findByIdAndUpdate(req.params.id, { status }, { new: true });
+        if (!msg) return res.status(404).json({ message: 'Message not found.' });
+        res.json({ message: 'Status updated.', msg });
+    } catch (err) {
+        res.status(500).json({ message: 'Server Error: Could not update message.' });
+    }
+});
+
+app.delete('/api/admin/messages/:id', requireAdmin, async (req, res) => {
+    try {
+        const msg = await Message.findByIdAndDelete(req.params.id);
+        if (!msg) return res.status(404).json({ message: 'Message not found.' });
+        res.json({ message: 'Message deleted.' });
+    } catch (err) {
+        res.status(500).json({ message: 'Server Error: Could not delete message.' });
     }
 });
 

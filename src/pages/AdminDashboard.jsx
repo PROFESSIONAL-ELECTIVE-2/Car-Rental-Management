@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FleetPage from './FleetPage.jsx';
 import BookingsPage from './BookingsPage.jsx';
+import MessagesPage from './MessagesPage.jsx';
 import './AdminDashboard.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -33,6 +34,10 @@ const NAV_LINKS = [
     {
         id: 'bookings', label: 'Bookings',
         icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
+    },
+    {
+        id: 'messages', label: 'Messages',
+        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,
     },
 ];
 
@@ -153,6 +158,7 @@ function Skeleton() {
     );
 }
 
+// ── Dashboard overview page ───────────────────────────────────────────────────
 function DashboardOverview({ data, loading, error, onRetry, onNav }) {
     if (loading) return <Skeleton />;
     if (error) return (
@@ -237,6 +243,7 @@ function DashboardOverview({ data, loading, error, onRetry, onNav }) {
     );
 }
 
+// ── Root dashboard ────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
     const navigate = useNavigate();
     const [data, setData]               = useState(null);
@@ -246,6 +253,7 @@ export default function AdminDashboard() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [notifOpen, setNotifOpen]     = useState(false);
     const [loggingOut, setLoggingOut]   = useState(false);
+    const [unreadMessages, setUnreadMessages] = useState(0);
 
     useEffect(() => {
         if (!getToken()) navigate('/admin/login', { replace: true });
@@ -264,6 +272,18 @@ export default function AdminDashboard() {
             const json = await res.json();
             if (!json.success) throw new Error(json.message);
             setData(json.data);
+
+            // Fetch unread message count for sidebar badge
+            try {
+                const token = getToken();
+                const msgRes = await fetch(`${API_BASE_URL}/api/admin/messages`, {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                });
+                if (msgRes.ok) {
+                    const msgs = await msgRes.json();
+                    setUnreadMessages(msgs.filter(m => m.status === 'Unread').length);
+                }
+            } catch { /* non-critical */ }
         } catch (err) {
             setError(err.message);
         } finally {
@@ -285,7 +305,7 @@ export default function AdminDashboard() {
         const token = getToken();
         try {
             if (token) await fetch(`${API_BASE_URL}/api/admin/logout`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
-        } catch {  } finally {
+        } catch { /* still clear */ } finally {
             clearToken();
             navigate('/admin/login', { replace: true });
         }
@@ -326,6 +346,9 @@ export default function AdminDashboard() {
                             {link.label}
                             {link.id === 'bookings' && pendingCount > 0 && (
                                 <span className="ad-nav-btn__badge">{pendingCount}</span>
+                            )}
+                            {link.id === 'messages' && unreadMessages > 0 && (
+                                <span className="ad-nav-btn__badge">{unreadMessages}</span>
                             )}
                         </button>
                     ))}
@@ -443,8 +466,9 @@ export default function AdminDashboard() {
                             onNav={navTo}
                         />
                     )}
-                    {activeNav === 'fleet'    && <FleetPage />}
-                    {activeNav === 'bookings' && <BookingsPage />}
+                    {activeNav === 'fleet'     && <FleetPage />}
+                    {activeNav === 'bookings'  && <BookingsPage />}
+                    {activeNav === 'messages'  && <MessagesPage />}
                 </main>
             </div>
         </div>

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import Button from '../components/Commons/Button';
 import './ContactUs.css';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 function Contact() {
     const [formData, setFormData] = useState({
         name: '',
@@ -10,13 +12,32 @@ function Contact() {
         message: ''
     });
 
-    const [submitted, setSubmitted] = useState(false);
+    const [submitted, setSubmitted]   = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError]           = useState(null);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log('Contact Form Submitted:', formData);
-        setSubmitted(true);
-        setFormData({ name: '', email: '', subject: '', message: '' });
+        setSubmitting(true);
+        setError(null);
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Failed to send message.');
+
+            setSubmitted(true);
+            setFormData({ name: '', email: '', subject: '', message: '' });
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -57,6 +78,16 @@ function Contact() {
                         </div>
                     ) : (
                         <form onSubmit={handleSubmit} className="contact-form">
+                            {error && (
+                                <div style={{
+                                    background: '#fee2e2', color: '#b91c1c',
+                                    border: '1px solid #fca5a5', borderRadius: 8,
+                                    padding: '10px 14px', fontSize: '0.875rem', marginBottom: 4,
+                                }}>
+                                    {error}
+                                </div>
+                            )}
+
                             <div className="form-group">
                                 <label>Full Name</label>
                                 <input
@@ -81,7 +112,7 @@ function Contact() {
 
                             <div className="form-group">
                                 <label>Subject</label>
-                                <select 
+                                <select
                                     value={formData.subject}
                                     onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                                     required
@@ -102,10 +133,12 @@ function Contact() {
                                     placeholder="How can we help you?"
                                     value={formData.message}
                                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                                ></textarea>
+                                />
                             </div>
 
-                            <Button type="submit">Send Message</Button>
+                            <Button type="submit" disabled={submitting}>
+                                {submitting ? 'Sending…' : 'Send Message'}
+                            </Button>
                         </form>
                     )}
                 </main>
@@ -114,14 +147,14 @@ function Contact() {
             <section className="map-section">
                 <h3>Find Us on the Map</h3>
                 <div className="map-wrapper">
-                    <iframe 
+                    <iframe
                         title="Office Location"
                         src="https://maps.google.com/maps?q=2F Alphabase Bldg, 45 Scout Rallos Brgy. Laging Handa, Quezon City&z=15&output=embed"
-                        width="100%" 
-                        height="450" 
-                        style={{ border: 0 }} 
-                        allowFullScreen="" 
-                        loading="lazy" 
+                        width="100%"
+                        height="450"
+                        style={{ border: 0 }}
+                        allowFullScreen=""
+                        loading="lazy"
                         referrerPolicy="no-referrer-when-downgrade">
                     </iframe>
                 </div>

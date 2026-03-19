@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FleetPage from './FleetPage.jsx';
 import BookingsPage from './BookingsPage.jsx';
@@ -6,6 +6,7 @@ import MessagesPage from './MessagesPage.jsx';
 import './AdminDashboard.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const POLL_INTERVAL = 30_000; 
 
 function getToken() {
     return localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
@@ -158,10 +159,10 @@ function Skeleton() {
     );
 }
 
-// ── Dashboard overview page ───────────────────────────────────────────────────
-function DashboardOverview({ data, loading, error, onRetry, onNav }) {
-    if (loading) return <Skeleton />;
-    if (error) return (
+function DashboardOverview({ data, loading, error, onRetry, onNav, lastRefreshed, isPolling }) {
+    
+    if (loading && !data) return <Skeleton />;
+    if (error && !data) return (
         <div className="ad-error">
             <span className="ad-error__icon">⚠️</span>
             <h3>Failed to load dashboard</h3>
@@ -199,9 +200,31 @@ function DashboardOverview({ data, loading, error, onRetry, onNav }) {
                         <p className="ad-section__label">Recent Bookings</p>
                         <p className="ad-table-sub">5 most recent transactions</p>
                     </div>
-                    <button className="ad-view-all-btn" onClick={() => onNav('bookings')}>
-                        View all bookings →
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        {}
+                        {isPolling && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{
+                                    width: 7, height: 7, borderRadius: '50%',
+                                    background: '#10b981',
+                                    boxShadow: '0 0 0 0 rgba(16,185,129,0.4)',
+                                    animation: 'ad-pulse 2s infinite',
+                                    display: 'inline-block',
+                                }} />
+                                <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>
+                                    Live
+                                </span>
+                            </div>
+                        )}
+                        {lastRefreshed && (
+                            <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                                Updated {lastRefreshed}
+                            </span>
+                        )}
+                        <button className="ad-view-all-btn" onClick={() => onNav('bookings')}>
+                            View all bookings →
+                        </button>
+                    </div>
                 </div>
                 <div className="ad-table-wrap">
                     <table className="ad-table">
@@ -243,24 +266,29 @@ function DashboardOverview({ data, loading, error, onRetry, onNav }) {
     );
 }
 
-// ── Root dashboard ────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
     const navigate = useNavigate();
-    const [data, setData]               = useState(null);
-    const [loading, setLoading]         = useState(true);
-    const [error, setError]             = useState(null);
-    const [activeNav, setActiveNav]     = useState('dashboard');
-    const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [notifOpen, setNotifOpen]     = useState(false);
-    const [loggingOut, setLoggingOut]   = useState(false);
+    const [data, setData]                     = useState(null);
+    const [loading, setLoading]               = useState(true);
+    const [error, setError]                   = useState(null);
+    const [activeNav, setActiveNav]           = useState('dashboard');
+    const [sidebarOpen, setSidebarOpen]       = useState(false);
+    const [notifOpen, setNotifOpen]           = useState(false);
+    const [loggingOut, setLoggingOut]         = useState(false);
     const [unreadMessages, setUnreadMessages] = useState(0);
+    const [lastRefreshed, setLastRefreshed]   = useState(null);
+    const [isPolling, setIsPolling]           = useState(false);
+
+    const pollTimerRef = useRef(null);
+    const dataRef      = useRef(data);
+    dataRef.current    = data;
 
     useEffect(() => {
         if (!getToken()) navigate('/admin/login', { replace: true });
     }, [navigate]);
 
-    const fetchData = useCallback(async () => {
-        setLoading(true);
+    const fetchData = useCallback(async (silent = false) => {
+        if (!silent) setLoading(true);
         setError(null);
         try {
             const token = getToken();
@@ -272,10 +300,11 @@ export default function AdminDashboard() {
             const json = await res.json();
             if (!json.success) throw new Error(json.message);
             setData(json.data);
+            setLastRefreshed(
+                new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+            );
 
-            // Fetch unread message count for sidebar badge
             try {
-                const token = getToken();
                 const msgRes = await fetch(`${API_BASE_URL}/api/admin/messages`, {
                     headers: token ? { Authorization: `Bearer ${token}` } : {},
                 });
@@ -283,7 +312,8 @@ export default function AdminDashboard() {
                     const msgs = await msgRes.json();
                     setUnreadMessages(msgs.filter(m => m.status === 'Unread').length);
                 }
-            } catch { /* non-critical */ }
+            } catch {  }
+
         } catch (err) {
             setError(err.message);
         } finally {
@@ -293,6 +323,50 @@ export default function AdminDashboard() {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
+    const shouldPoll = useCallback(() => {
+        const stats = dataRef.current?.bookingStats;
+        return (stats?.active ?? 0) > 0 || (stats?.pending ?? 0) > 0;
+    }, []);
+
+    const stopPolling = useCallback(() => {
+        if (pollTimerRef.current) {
+            clearInterval(pollTimerRef.current);
+            pollTimerRef.current = null;
+        }
+        setIsPolling(false);
+    }, []);
+
+    const startPolling = useCallback(() => {
+        if (pollTimerRef.current) return; 
+        pollTimerRef.current = setInterval(() => {
+            if (shouldPoll()) {
+                fetchData(true); 
+            } else {
+                stopPolling();   
+            }
+        }, POLL_INTERVAL);
+        setIsPolling(true);
+    }, [fetchData, shouldPoll, stopPolling]);
+
+    useEffect(() => {
+        if (shouldPoll()) {
+            startPolling();
+        } else {
+            stopPolling();
+        }
+        return () => stopPolling();
+    }, [data?.bookingStats?.active, data?.bookingStats?.pending]);
+
+    useEffect(() => {
+        const onVisible = () => {
+            if (document.visibilityState === 'visible' && shouldPoll()) {
+                fetchData(true);
+            }
+        };
+        document.addEventListener('visibilitychange', onVisible);
+        return () => document.removeEventListener('visibilitychange', onVisible);
+    }, [fetchData, shouldPoll]);
+
     useEffect(() => {
         const handler = () => { if (window.innerWidth >= 1024) setSidebarOpen(false); };
         window.addEventListener('resize', handler);
@@ -301,11 +375,15 @@ export default function AdminDashboard() {
 
     const handleLogout = async () => {
         if (loggingOut) return;
+        stopPolling();
         setLoggingOut(true);
         const token = getToken();
         try {
-            if (token) await fetch(`${API_BASE_URL}/api/admin/logout`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
-        } catch { /* still clear */ } finally {
+            if (token) await fetch(`${API_BASE_URL}/api/admin/logout`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+        } catch {  } finally {
             clearToken();
             navigate('/admin/login', { replace: true });
         }
@@ -320,6 +398,15 @@ export default function AdminDashboard() {
 
     return (
         <div className="ad-root">
+            <style>{`
+                @keyframes ad-pulse {
+                    0%   { box-shadow: 0 0 0 0   rgba(16,185,129,0.5); }
+                    70%  { box-shadow: 0 0 0 7px rgba(16,185,129,0);   }
+                    100% { box-shadow: 0 0 0 0   rgba(16,185,129,0);   }
+                }
+                @keyframes ad-spin { to { transform: rotate(360deg); } }
+            `}</style>
+
             {sidebarOpen && <div className="ad-overlay" onClick={() => setSidebarOpen(false)} />}
 
             <aside className={`ad-sidebar${sidebarOpen ? ' ad-sidebar--open' : ''}`}>
@@ -438,7 +525,7 @@ export default function AdminDashboard() {
                                         </div>
                                     )}
                                 </div>
-                                <button className="ad-refresh-btn" onClick={fetchData} title="Refresh">
+                                <button className="ad-refresh-btn" onClick={() => fetchData(false)} title="Refresh">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                         <polyline points="23 4 23 10 17 10"/>
                                         <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
@@ -462,8 +549,10 @@ export default function AdminDashboard() {
                             data={data}
                             loading={loading}
                             error={error}
-                            onRetry={fetchData}
+                            onRetry={() => fetchData(false)}
                             onNav={navTo}
+                            lastRefreshed={lastRefreshed}
+                            isPolling={isPolling}
                         />
                     )}
                     {activeNav === 'fleet'     && <FleetPage />}

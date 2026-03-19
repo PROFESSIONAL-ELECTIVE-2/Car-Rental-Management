@@ -85,6 +85,7 @@ mongoose.connect(mongoURI)
     })
     .catch(err => console.log('MongoDB Connection Error:', err));
 
+
 app.get('/api/cars', async (req, res) => {
     try {
         const cars = await Car.find();
@@ -300,7 +301,6 @@ app.post('/api/admin/login', async (req, res) => {
     }
 });
 
-
 app.post('/api/admin/logout', requireAdmin, (req, res) => {
     tokenBlacklist.add(req.token);
     console.log(`\nToken blacklisted for admin id: ${req.admin.id}`);
@@ -324,16 +324,45 @@ app.put('/api/admin/bookings/:id/status', requireAdmin, async (req, res) => {
     if (!allowed.includes(status)) {
         return res.status(400).json({ message: `Invalid status. Must be one of: ${allowed.join(', ')}` });
     }
+
+    const terminalStatuses = ['Completed', 'Cancelled'];
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        const booking = await Booking.findByIdAndUpdate(
-            req.params.id,
-            { status },
-            { new: true }
-        ).populate('carId', 'title type image');
-        if (!booking) return res.status(404).json({ message: 'Booking not found.' });
+        const booking = await Booking.findById(req.params.id).session(session);
+        if (!booking) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(404).json({ message: 'Booking not found.' });
+        }
+
+        const wasTerminal = terminalStatuses.includes(booking.status);
+        const isNowTerminal = terminalStatuses.includes(status);
+
+        if (isNowTerminal && !wasTerminal) {
+            const car = await Car.findById(booking.carId).session(session);
+            if (car) {
+                car.stock += booking.qty ?? 1;
+                await car.save({ session });
+                console.log(`Stock restored: ${car.title} → stock now ${car.stock}`);
+            }
+        }
+
+        booking.status = status;
+        await booking.save({ session });
+        await session.commitTransaction();
+        session.endSession();
+
+        const populated = await Booking.findById(booking._id)
+            .populate('carId', 'title type image');
+
         console.log(`Booking ${booking._id} → ${status}`);
-        res.json({ message: 'Status updated.', booking });
+        res.json({ message: 'Status updated.', booking: populated });
+
     } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
         console.error('Status update error:', err);
         res.status(500).json({ message: 'Server Error: Could not update status.' });
     }
@@ -387,7 +416,7 @@ app.put('/api/admin/cars/:id', requireAdmin, async (req, res) => {
     }
 });
 
-// DELETE remove car
+
 app.delete('/api/admin/cars/:id', requireAdmin, async (req, res) => {
     try {
         const car = await Car.findByIdAndDelete(req.params.id);
@@ -400,7 +429,7 @@ app.delete('/api/admin/cars/:id', requireAdmin, async (req, res) => {
     }
 });
 
-// GET dashboard analytics
+
 app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
     try {
         const revenueAgg = await Booking.aggregate([
@@ -482,6 +511,7 @@ app.get('/api/admin/messages', requireAdmin, async (req, res) => {
     }
 });
 
+
 app.put('/api/admin/messages/:id/status', requireAdmin, async (req, res) => {
     const { status } = req.body;
     const allowed = ['Unread', 'Read', 'Archived'];
@@ -496,6 +526,7 @@ app.put('/api/admin/messages/:id/status', requireAdmin, async (req, res) => {
         res.status(500).json({ message: 'Server Error: Could not update message.' });
     }
 });
+
 
 app.delete('/api/admin/messages/:id', requireAdmin, async (req, res) => {
     try {

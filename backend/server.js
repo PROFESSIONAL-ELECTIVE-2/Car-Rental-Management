@@ -21,29 +21,27 @@ const JWT_SECRET = process.env.JWT_SECRET   || 'your_fallback_secret_key';
 
 const tokenBlacklist = new Set();
 
-// ─── Nodemailer transporter ───────────────────────────────────────────────────
+
 const transporter = nodemailer.createTransport({
-    service: process.env.EMAIL_SERVICE || 'gmail',   // e.g. 'gmail', 'Outlook365'
+    service: process.env.EMAIL_SERVICE || 'gmail',   
     auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,                // App-password for Gmail
+        pass: process.env.EMAIL_PASS,                
     },
 });
 
-// Verify connection on startup (non-fatal)
 transporter.verify((err) => {
-    if (err) console.warn('⚠️  Email transporter not ready:', err.message);
-    else     console.log('✅  Email transporter ready');
+    if (err) console.warn('Email transporter not ready:', err.message);
+    else     console.log('Email transporter ready');
 });
 
-// ─── Email helpers ────────────────────────────────────────────────────────────
+
 const BRAND = 'Triple R and A Car Rental';
 
 /**
- * Shared HTML shell used by every email template.
- * @param {string} title   - Pre-header / subject hint text
- * @param {string} body    - Inner HTML content
- * @param {string} accent  - Hex colour for the header bar (#2563eb, #16a34a, …)
+ * @param {string} title  
+ * @param {string} body    
+ * @param {string} accent  
  */
 function htmlShell(title, body, accent = '#2563eb') {
     return `<!DOCTYPE html>
@@ -88,25 +86,19 @@ function htmlShell(title, body, accent = '#2563eb') {
 </html>`;
 }
 
-/**
- * Format an ISO date string to a readable local date.
- */
+
 function fmtDate(iso) {
     return new Date(iso).toLocaleDateString('en-PH', {
         year: 'numeric', month: 'long', day: 'numeric',
     });
 }
 
-/**
- * Format a number as Philippine Peso.
- */
+
 function fmtPeso(n) {
     return `₱${Number(n ?? 0).toLocaleString('en-PH')}`;
 }
 
-/**
- * Build a booking-detail table shared across all templates.
- */
+
 function bookingTable(booking, carTitle) {
     const qty = booking.qty ?? 1;
     return `
@@ -122,7 +114,7 @@ function bookingTable(booking, carTitle) {
     </table>`;
 }
 
-// ── Template 1: Booking Submitted (Pending) ────────────────────────────────
+
 function buildSubmittedEmail(booking, carTitle) {
     const subject = `Booking Received – #${String(booking._id).slice(-8).toUpperCase()} | ${BRAND}`;
     const body = `
@@ -136,7 +128,7 @@ function buildSubmittedEmail(booking, carTitle) {
     return { subject, html: htmlShell('Booking Confirmation', body, '#f59e0b') };
 }
 
-// ── Template 2: Booking Active ─────────────────────────────────────────────
+
 function buildActiveEmail(booking, carTitle) {
     const subject = `Your Rental is Now Active – #${String(booking._id).slice(-8).toUpperCase()} | ${BRAND}`;
     const body = `
@@ -149,7 +141,7 @@ function buildActiveEmail(booking, carTitle) {
     return { subject, html: htmlShell('Your Rental is Active', body, '#16a34a') };
 }
 
-// ── Template 3: Booking Completed ─────────────────────────────────────────
+
 function buildCompletedEmail(booking, carTitle) {
     const subject = `Rental Completed – Thank You! | ${BRAND}`;
     const body = `
@@ -162,12 +154,9 @@ function buildCompletedEmail(booking, carTitle) {
     return { subject, html: htmlShell('Rental Completed – Thank You!', body, '#2563eb') };
 }
 
-/**
- * Send an email to the customer. Errors are caught and logged so they never
- * crash the API response.
- */
+
 async function sendEmail(to, subject, html) {
-    if (!to || !process.env.EMAIL_USER) return; // skip if no address or not configured
+    if (!to || !process.env.EMAIL_USER) return; 
     try {
         await transporter.sendMail({
             from:    `"${BRAND}" <${process.env.EMAIL_USER}>`,
@@ -181,7 +170,7 @@ async function sendEmail(to, subject, html) {
     }
 }
 
-// ─── Mongoose schemas ──────────────────────────────────────────────────────
+
 const bookingSchema = new mongoose.Schema(
     {
         carId:          { type: mongoose.Schema.Types.ObjectId, ref: 'Car', required: true },
@@ -214,7 +203,6 @@ const messageSchema = new mongoose.Schema(
 
 const Message = mongoose.models.Message || mongoose.model('Message', messageSchema, 'messages');
 
-// ─── Auth middleware ───────────────────────────────────────────────────────
 function requireAdmin(req, res, next) {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
@@ -237,7 +225,6 @@ function requireAdmin(req, res, next) {
     }
 }
 
-// ─── DB connection ─────────────────────────────────────────────────────────
 mongoose.connect(mongoURI)
     .then(() => {
         console.log('--- Database Info ---');
@@ -249,7 +236,6 @@ mongoose.connect(mongoURI)
     })
     .catch(err => console.log('MongoDB Connection Error:', err));
 
-// ─── Public routes ─────────────────────────────────────────────────────────
 
 app.get('/api/cars', async (req, res) => {
     try {
@@ -260,7 +246,6 @@ app.get('/api/cars', async (req, res) => {
     }
 });
 
-// Single booking
 app.post('/api/bookings', async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -314,10 +299,10 @@ app.post('/api/bookings', async (req, res) => {
 
         console.log(`New booking: ${booking._id} for car ${car.title}`);
 
-        // ── Email: booking submitted ──
+        
         if (booking.customerEmail) {
             const { subject, html } = buildSubmittedEmail(booking, car.title);
-            sendEmail(booking.customerEmail, subject, html); // fire-and-forget
+            sendEmail(booking.customerEmail, subject, html); 
         }
 
         return res.status(201).json({ message: 'Booking created successfully!', booking });
@@ -330,7 +315,6 @@ app.post('/api/bookings', async (req, res) => {
     }
 });
 
-// Batch booking
 app.post('/api/bookings/batch', async (req, res) => {
     const { bookings } = req.body;
 
@@ -343,7 +327,7 @@ app.post('/api/bookings/batch', async (req, res) => {
 
     try {
         const created = [];
-        const emailQueue = []; // collect { booking, carTitle } after commit
+        const emailQueue = []; 
 
         for (const item of bookings) {
             const {
@@ -400,11 +384,11 @@ app.post('/api/bookings/batch', async (req, res) => {
         await session.commitTransaction();
         session.endSession();
 
-        // ── Emails: one per booked vehicle ──
+        
         for (const { booking, carTitle } of emailQueue) {
             if (booking.customerEmail) {
                 const { subject, html } = buildSubmittedEmail(booking, carTitle);
-                sendEmail(booking.customerEmail, subject, html); // fire-and-forget
+                sendEmail(booking.customerEmail, subject, html); 
             }
         }
 
@@ -421,7 +405,6 @@ app.post('/api/bookings/batch', async (req, res) => {
     }
 });
 
-// Contact form messages
 app.post('/api/messages', async (req, res) => {
     try {
         const { name, email, subject, message } = req.body;
@@ -441,8 +424,6 @@ app.post('/api/messages', async (req, res) => {
         res.status(500).json({ message: 'Server Error: Could not save message.' });
     }
 });
-
-// ─── Admin auth ────────────────────────────────────────────────────────────
 
 app.post('/api/admin/login', async (req, res) => {
     const { identifier, password, rememberMe } = req.body;
@@ -493,8 +474,6 @@ app.post('/api/admin/logout', requireAdmin, (req, res) => {
     console.log(`\nToken blacklisted for admin id: ${req.admin.id}`);
     res.json({ message: 'Logged out successfully.' });
 });
-
-// ─── Admin: bookings ───────────────────────────────────────────────────────
 
 app.get('/api/bookings', requireAdmin, async (req, res) => {
     try {
@@ -549,7 +528,7 @@ app.put('/api/admin/bookings/:id/status', requireAdmin, async (req, res) => {
 
         console.log(`Booking ${booking._id} → ${status}`);
 
-        // ── Email: status-driven notification ──
+        
         if (booking.customerEmail) {
             const carTitle = populated.carId?.title || car?.title || 'your vehicle';
 
@@ -572,7 +551,6 @@ app.put('/api/admin/bookings/:id/status', requireAdmin, async (req, res) => {
     }
 });
 
-// ─── Admin: fleet ──────────────────────────────────────────────────────────
 
 app.get('/api/admin/cars', requireAdmin, async (req, res) => {
     try {
@@ -633,8 +611,6 @@ app.delete('/api/admin/cars/:id', requireAdmin, async (req, res) => {
         res.status(500).json({ message: 'Server Error: Could not delete car.' });
     }
 });
-
-// ─── Admin: dashboard analytics ───────────────────────────────────────────
 
 app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
     try {
@@ -708,8 +684,6 @@ app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
     }
 });
 
-// ─── Admin: messages ───────────────────────────────────────────────────────
-
 app.get('/api/admin/messages', requireAdmin, async (req, res) => {
     try {
         const messages = await Message.find().sort({ createdAt: -1 });
@@ -744,6 +718,6 @@ app.delete('/api/admin/messages/:id', requireAdmin, async (req, res) => {
     }
 });
 
-// ─── Start server ──────────────────────────────────────────────────────────
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

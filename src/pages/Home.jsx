@@ -56,7 +56,7 @@ function Home() {
                         </p>
 
                         <div className="hero-cta">
-                            <Button onClick={() => navigate('/rent')}>
+                            <Button onClick={() => navigate('/fleet')}>
                                 View All Vehicles
                             </Button>
 

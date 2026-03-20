@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import nodemailer from 'nodemailer';
 import { setServers } from 'node:dns/promises';
 import Car from './models/cars.js';
 import Admin from './models/Admin.js';
@@ -15,11 +16,172 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const mongoURI  = process.env.MONGODB_URI  || 'mongodb://localhost:27017/car_rental';
-const JWT_SECRET = process.env.JWT_SECRET  || 'your_fallback_secret_key';
+const mongoURI   = process.env.MONGODB_URI  || 'mongodb://localhost:27017/car_rental';
+const JWT_SECRET = process.env.JWT_SECRET   || 'your_fallback_secret_key';
 
 const tokenBlacklist = new Set();
 
+// ─── Nodemailer transporter ───────────────────────────────────────────────────
+const transporter = nodemailer.createTransport({
+    service: process.env.EMAIL_SERVICE || 'gmail',   // e.g. 'gmail', 'Outlook365'
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,                // App-password for Gmail
+    },
+});
+
+// Verify connection on startup (non-fatal)
+transporter.verify((err) => {
+    if (err) console.warn('⚠️  Email transporter not ready:', err.message);
+    else     console.log('✅  Email transporter ready');
+});
+
+// ─── Email helpers ────────────────────────────────────────────────────────────
+const BRAND = 'Triple R and A Car Rental';
+
+/**
+ * Shared HTML shell used by every email template.
+ * @param {string} title   - Pre-header / subject hint text
+ * @param {string} body    - Inner HTML content
+ * @param {string} accent  - Hex colour for the header bar (#2563eb, #16a34a, …)
+ */
+function htmlShell(title, body, accent = '#2563eb') {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>${title}</title>
+  <style>
+    body{margin:0;padding:0;background:#f3f4f8;font-family:'Segoe UI',Arial,sans-serif;color:#111827}
+    .wrap{max-width:600px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.08)}
+    .header{background:${accent};padding:32px 40px 24px;color:#fff}
+    .header h1{margin:0;font-size:1.5rem;font-weight:800;letter-spacing:-.5px}
+    .header p{margin:6px 0 0;font-size:.9rem;opacity:.85}
+    .body{padding:32px 40px}
+    .body p{font-size:.95rem;line-height:1.7;margin:0 0 14px}
+    .table{width:100%;border-collapse:collapse;margin:20px 0}
+    .table td{padding:10px 14px;font-size:.9rem;border-bottom:1px solid #f1f5f9}
+    .table td:first-child{font-weight:600;color:#374151;width:38%}
+    .table td:last-child{color:#111827}
+    .badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:.78rem;font-weight:700}
+    .badge-pending{background:#fef9c3;color:#854d0e}
+    .badge-active{background:#d1fae5;color:#065f46}
+    .badge-completed{background:#dbeafe;color:#1e40af}
+    .badge-cancelled{background:#fee2e2;color:#991b1b}
+    .footer{background:#f9fafb;padding:20px 40px;text-align:center;font-size:.8rem;color:#9ca3af;border-top:1px solid #f1f5f9}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <h1>${BRAND}</h1>
+      <p>${title}</p>
+    </div>
+    <div class="body">${body}</div>
+    <div class="footer">
+      &copy; ${new Date().getFullYear()} ${BRAND} &nbsp;&bull;&nbsp; All rights reserved.<br/>
+      This is an automated message — please do not reply directly.
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+/**
+ * Format an ISO date string to a readable local date.
+ */
+function fmtDate(iso) {
+    return new Date(iso).toLocaleDateString('en-PH', {
+        year: 'numeric', month: 'long', day: 'numeric',
+    });
+}
+
+/**
+ * Format a number as Philippine Peso.
+ */
+function fmtPeso(n) {
+    return `₱${Number(n ?? 0).toLocaleString('en-PH')}`;
+}
+
+/**
+ * Build a booking-detail table shared across all templates.
+ */
+function bookingTable(booking, carTitle) {
+    const qty = booking.qty ?? 1;
+    return `
+    <table class="table">
+      <tr><td>Reference</td><td>#${String(booking._id).slice(-8).toUpperCase()}</td></tr>
+      <tr><td>Vehicle</td><td>${carTitle}</td></tr>
+      ${qty > 1 ? `<tr><td>Quantity</td><td>${qty} unit(s)</td></tr>` : ''}
+      <tr><td>Pickup Date</td><td>${fmtDate(booking.startDate)}</td></tr>
+      <tr><td>Return Date</td><td>${fmtDate(booking.endDate)}</td></tr>
+      <tr><td>Rental Days</td><td>${booking.rentalDays} day${booking.rentalDays !== 1 ? 's' : ''}</td></tr>
+      ${booking.pickupLocation ? `<tr><td>Pickup Location</td><td>${booking.pickupLocation}</td></tr>` : ''}
+      <tr><td>Total Cost</td><td><strong>${fmtPeso(booking.totalCost)}</strong></td></tr>
+    </table>`;
+}
+
+// ── Template 1: Booking Submitted (Pending) ────────────────────────────────
+function buildSubmittedEmail(booking, carTitle) {
+    const subject = `Booking Received – #${String(booking._id).slice(-8).toUpperCase()} | ${BRAND}`;
+    const body = `
+      <p>Hi <strong>${booking.customerName}</strong>,</p>
+      <p>Thank you for choosing <strong>${BRAND}</strong>! We have successfully received your booking request and it is currently <span class="badge badge-pending">Pending</span> review.</p>
+      <p>Our team will confirm your reservation shortly. Here is a summary of your booking:</p>
+      ${bookingTable(booking, carTitle)}
+      <p>If you have any questions in the meantime, feel free to contact our support team.</p>
+      <p>We look forward to serving you!</p>`;
+
+    return { subject, html: htmlShell('Booking Confirmation', body, '#f59e0b') };
+}
+
+// ── Template 2: Booking Active ─────────────────────────────────────────────
+function buildActiveEmail(booking, carTitle) {
+    const subject = `Your Rental is Now Active – #${String(booking._id).slice(-8).toUpperCase()} | ${BRAND}`;
+    const body = `
+      <p>Hi <strong>${booking.customerName}</strong>,</p>
+      <p>Great news! Your booking has been confirmed and is now <span class="badge badge-active">Active</span>. Your vehicle is ready for pick-up.</p>
+      ${bookingTable(booking, carTitle)}
+      <p>Please bring a valid government-issued ID and your booking reference number when collecting your vehicle.</p>
+      <p>Enjoy your trip, and drive safely!</p>`;
+
+    return { subject, html: htmlShell('Your Rental is Active', body, '#16a34a') };
+}
+
+// ── Template 3: Booking Completed ─────────────────────────────────────────
+function buildCompletedEmail(booking, carTitle) {
+    const subject = `Rental Completed – Thank You! | ${BRAND}`;
+    const body = `
+      <p>Hi <strong>${booking.customerName}</strong>,</p>
+      <p>Your rental has been marked as <span class="badge badge-completed">Completed</span>. We hope you had a great experience with us!</p>
+      ${bookingTable(booking, carTitle)}
+      <p>We would love to have you back. Feel free to explore our fleet for your next journey.</p>
+      <p>Thank you for choosing <strong>${BRAND}</strong>!</p>`;
+
+    return { subject, html: htmlShell('Rental Completed – Thank You!', body, '#2563eb') };
+}
+
+/**
+ * Send an email to the customer. Errors are caught and logged so they never
+ * crash the API response.
+ */
+async function sendEmail(to, subject, html) {
+    if (!to || !process.env.EMAIL_USER) return; // skip if no address or not configured
+    try {
+        await transporter.sendMail({
+            from:    `"${BRAND}" <${process.env.EMAIL_USER}>`,
+            to,
+            subject,
+            html,
+        });
+        console.log(`📧  Email sent → ${to} [${subject}]`);
+    } catch (err) {
+        console.error('📧  Email send error:', err.message);
+    }
+}
+
+// ─── Mongoose schemas ──────────────────────────────────────────────────────
 const bookingSchema = new mongoose.Schema(
     {
         carId:          { type: mongoose.Schema.Types.ObjectId, ref: 'Car', required: true },
@@ -52,6 +214,7 @@ const messageSchema = new mongoose.Schema(
 
 const Message = mongoose.models.Message || mongoose.model('Message', messageSchema, 'messages');
 
+// ─── Auth middleware ───────────────────────────────────────────────────────
 function requireAdmin(req, res, next) {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
@@ -74,6 +237,7 @@ function requireAdmin(req, res, next) {
     }
 }
 
+// ─── DB connection ─────────────────────────────────────────────────────────
 mongoose.connect(mongoURI)
     .then(() => {
         console.log('--- Database Info ---');
@@ -85,6 +249,7 @@ mongoose.connect(mongoURI)
     })
     .catch(err => console.log('MongoDB Connection Error:', err));
 
+// ─── Public routes ─────────────────────────────────────────────────────────
 
 app.get('/api/cars', async (req, res) => {
     try {
@@ -95,6 +260,7 @@ app.get('/api/cars', async (req, res) => {
     }
 });
 
+// Single booking
 app.post('/api/bookings', async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -147,6 +313,13 @@ app.post('/api/bookings', async (req, res) => {
         session.endSession();
 
         console.log(`New booking: ${booking._id} for car ${car.title}`);
+
+        // ── Email: booking submitted ──
+        if (booking.customerEmail) {
+            const { subject, html } = buildSubmittedEmail(booking, car.title);
+            sendEmail(booking.customerEmail, subject, html); // fire-and-forget
+        }
+
         return res.status(201).json({ message: 'Booking created successfully!', booking });
 
     } catch (err) {
@@ -157,6 +330,7 @@ app.post('/api/bookings', async (req, res) => {
     }
 });
 
+// Batch booking
 app.post('/api/bookings/batch', async (req, res) => {
     const { bookings } = req.body;
 
@@ -169,6 +343,7 @@ app.post('/api/bookings/batch', async (req, res) => {
 
     try {
         const created = [];
+        const emailQueue = []; // collect { booking, carTitle } after commit
 
         for (const item of bookings) {
             const {
@@ -218,11 +393,20 @@ app.post('/api/bookings/batch', async (req, res) => {
             car.stock -= Number(qty);
             await car.save({ session });
             created.push(booking);
+            emailQueue.push({ booking, carTitle: car.title });
             console.log(`Batch booking: ${booking._id} | ${car.title} × ${qty}`);
         }
 
         await session.commitTransaction();
         session.endSession();
+
+        // ── Emails: one per booked vehicle ──
+        for (const { booking, carTitle } of emailQueue) {
+            if (booking.customerEmail) {
+                const { subject, html } = buildSubmittedEmail(booking, carTitle);
+                sendEmail(booking.customerEmail, subject, html); // fire-and-forget
+            }
+        }
 
         return res.status(201).json({
             message:  `${created.length} booking(s) created successfully!`,
@@ -237,6 +421,7 @@ app.post('/api/bookings/batch', async (req, res) => {
     }
 });
 
+// Contact form messages
 app.post('/api/messages', async (req, res) => {
     try {
         const { name, email, subject, message } = req.body;
@@ -256,6 +441,8 @@ app.post('/api/messages', async (req, res) => {
         res.status(500).json({ message: 'Server Error: Could not save message.' });
     }
 });
+
+// ─── Admin auth ────────────────────────────────────────────────────────────
 
 app.post('/api/admin/login', async (req, res) => {
     const { identifier, password, rememberMe } = req.body;
@@ -307,6 +494,8 @@ app.post('/api/admin/logout', requireAdmin, (req, res) => {
     res.json({ message: 'Logged out successfully.' });
 });
 
+// ─── Admin: bookings ───────────────────────────────────────────────────────
+
 app.get('/api/bookings', requireAdmin, async (req, res) => {
     try {
         const bookings = await Booking.find()
@@ -340,8 +529,9 @@ app.put('/api/admin/bookings/:id/status', requireAdmin, async (req, res) => {
         const wasTerminal = terminalStatuses.includes(booking.status);
         const isNowTerminal = terminalStatuses.includes(status);
 
+        let car = null;
         if (isNowTerminal && !wasTerminal) {
-            const car = await Car.findById(booking.carId).session(session);
+            car = await Car.findById(booking.carId).session(session);
             if (car) {
                 car.stock += booking.qty ?? 1;
                 await car.save({ session });
@@ -358,6 +548,20 @@ app.put('/api/admin/bookings/:id/status', requireAdmin, async (req, res) => {
             .populate('carId', 'title type image');
 
         console.log(`Booking ${booking._id} → ${status}`);
+
+        // ── Email: status-driven notification ──
+        if (booking.customerEmail) {
+            const carTitle = populated.carId?.title || car?.title || 'your vehicle';
+
+            if (status === 'Active') {
+                const { subject, html } = buildActiveEmail(booking, carTitle);
+                sendEmail(booking.customerEmail, subject, html);
+            } else if (status === 'Completed') {
+                const { subject, html } = buildCompletedEmail(booking, carTitle);
+                sendEmail(booking.customerEmail, subject, html);
+            }
+        }
+
         res.json({ message: 'Status updated.', booking: populated });
 
     } catch (err) {
@@ -367,6 +571,8 @@ app.put('/api/admin/bookings/:id/status', requireAdmin, async (req, res) => {
         res.status(500).json({ message: 'Server Error: Could not update status.' });
     }
 });
+
+// ─── Admin: fleet ──────────────────────────────────────────────────────────
 
 app.get('/api/admin/cars', requireAdmin, async (req, res) => {
     try {
@@ -416,7 +622,6 @@ app.put('/api/admin/cars/:id', requireAdmin, async (req, res) => {
     }
 });
 
-
 app.delete('/api/admin/cars/:id', requireAdmin, async (req, res) => {
     try {
         const car = await Car.findByIdAndDelete(req.params.id);
@@ -429,6 +634,7 @@ app.delete('/api/admin/cars/:id', requireAdmin, async (req, res) => {
     }
 });
 
+// ─── Admin: dashboard analytics ───────────────────────────────────────────
 
 app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
     try {
@@ -502,6 +708,8 @@ app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
     }
 });
 
+// ─── Admin: messages ───────────────────────────────────────────────────────
+
 app.get('/api/admin/messages', requireAdmin, async (req, res) => {
     try {
         const messages = await Message.find().sort({ createdAt: -1 });
@@ -510,7 +718,6 @@ app.get('/api/admin/messages', requireAdmin, async (req, res) => {
         res.status(500).json({ message: 'Server Error: Could not retrieve messages.' });
     }
 });
-
 
 app.put('/api/admin/messages/:id/status', requireAdmin, async (req, res) => {
     const { status } = req.body;
@@ -527,7 +734,6 @@ app.put('/api/admin/messages/:id/status', requireAdmin, async (req, res) => {
     }
 });
 
-
 app.delete('/api/admin/messages/:id', requireAdmin, async (req, res) => {
     try {
         const msg = await Message.findByIdAndDelete(req.params.id);
@@ -538,5 +744,6 @@ app.delete('/api/admin/messages/:id', requireAdmin, async (req, res) => {
     }
 });
 
+// ─── Start server ──────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

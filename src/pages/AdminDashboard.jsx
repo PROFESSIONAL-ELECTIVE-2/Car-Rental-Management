@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FleetPage from './FleetPage.jsx';
 import BookingsPage from './BookingsPage.jsx';
-import MessagesPage from './MessagesPage.jsx';
+import MessagesPage from './Messagespage.jsx';
+import ForecastingPage from './ForecastingPage.jsx';
 import './AdminDashboard.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -39,6 +40,14 @@ const NAV_LINKS = [
     {
         id: 'messages', label: 'Messages',
         icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,
+    },
+    {
+        id: 'forecasting', label: 'Forecasting',
+        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+            <line x1="6" y1="20" x2="6" y2="14"/>
+            <polyline points="2 17 6 14 10 17 14 12 18 10 22 10"/>
+        </svg>,
     },
 ];
 
@@ -201,7 +210,6 @@ function DashboardOverview({ data, loading, error, onRetry, onNav, lastRefreshed
                         <p className="ad-table-sub">5 most recent transactions</p>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        {}
                         {isPolling && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span style={{
@@ -555,9 +563,10 @@ export default function AdminDashboard() {
                             isPolling={isPolling}
                         />
                     )}
-                    {activeNav === 'fleet'     && <FleetPage />}
-                    {activeNav === 'bookings'  && <BookingsPage />}
-                    {activeNav === 'messages'  && <MessagesPage />}
+                    {activeNav === 'fleet'      && <FleetPage />}
+                    {activeNav === 'bookings'   && <BookingsPage />}
+                    {activeNav === 'messages'   && <MessagesPage />}
+                    {activeNav === 'forecasting' && <ForecastingPage />}
                 </main>
             </div>
         </div>

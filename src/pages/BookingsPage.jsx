@@ -16,10 +16,12 @@ const STATUS_TRANSITIONS = {
 const SORT_OPTIONS = [
     { value: 'newest',   label: 'Newest First' },
     { value: 'oldest',   label: 'Oldest First' },
-    { value: 'cost_hi',  label: 'Cost: High → Low' },
-    { value: 'cost_lo',  label: 'Cost: Low → High' },
+    { value: 'cost_hi',  label: 'Cost: High to Low' },
+    { value: 'cost_lo',  label: 'Cost: Low to High' },
     { value: 'start',    label: 'Start Date' },
 ];
+
+const PAYMENT_METHODS = ['Cash', 'GCash', 'Bank Transfer', 'Other'];
 
 function getToken() {
     return localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
@@ -41,11 +43,27 @@ async function apiFetch(path, options = {}) {
     return data;
 }
 
-const fmt = (iso) => iso
-    ? new Date(iso).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
-    : '—';
-const fmtCur = (n) => n != null ? `₱${Number(n).toLocaleString()}` : '—';
-const fmtCurNum = (n) => Number(n ?? 0);
+const fmt      = (iso) => iso ? new Date(iso).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
+const fmtCur   = (n)   => n != null ? `PHP ${Number(n).toLocaleString('en-PH')}` : '-';
+const fmtCurNum = (n)  => Number(n ?? 0);
+
+function PaymentPill({ status }) {
+    const styles = {
+        'Paid':           { background: '#d1fae5', color: '#065f46', border: '1px solid #a7f3d0' },
+        'Partially Paid': { background: '#fef9c3', color: '#854d0e', border: '1px solid #fde68a' },
+        'Unpaid':         { background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' },
+    };
+    const s = styles[status] || styles['Unpaid'];
+    return (
+        <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            padding: '3px 10px', borderRadius: 999, fontSize: '0.7rem',
+            fontWeight: 700, whiteSpace: 'nowrap', ...s,
+        }}>
+            {status || 'Unpaid'}
+        </span>
+    );
+}
 
 function StatusBadge({ status }) {
     return <span className={`bp-badge bp-badge--${status?.toLowerCase()}`}>{status}</span>;
@@ -58,19 +76,295 @@ function ConfirmDialog({ message, confirmLabel, confirmClass, onConfirm, onCance
                 <p className="bp-confirm__msg">{message}</p>
                 <div className="bp-confirm__actions">
                     <button className="bp-confirm__cancel" onClick={onCancel}>Cancel</button>
-                    <button className={`bp-confirm__ok ${confirmClass}`} onClick={onConfirm}>
-                        {confirmLabel}
-                    </button>
+                    <button className={`bp-confirm__ok ${confirmClass}`} onClick={onConfirm}>{confirmLabel}</button>
                 </div>
             </div>
         </div>
     );
 }
 
-function BookingDrawer({ booking, onClose, onStatusChange }) {
-    const [updating, setUpdating]     = useState(false);
-    const [confirm, setConfirm]       = useState(null); 
+
+function PaymentPanel({ booking, onUpdated }) {
+    const [showQuote,   setShowQuote]   = useState(false);
+    const [showPayment, setShowPayment] = useState(false);
+    const [quotedPrice, setQuotedPrice] = useState(booking.quotedPrice || '');
+    const [quoteNotes,  setQuoteNotes]  = useState(booking.paymentNotes || '');
+    const [amountPaid,  setAmountPaid]  = useState(booking.amountPaid || '');
+    const [payMethod,   setPayMethod]   = useState(booking.paymentMethod || 'Cash');
+    const [payNotes,    setPayNotes]    = useState('');
+    const [saving,      setSaving]      = useState(false);
+    const [error,       setError]       = useState('');
+
+    
+    useEffect(() => {
+        setQuotedPrice(booking.quotedPrice || '');
+        setQuoteNotes(booking.paymentNotes || '');
+        setAmountPaid(booking.amountPaid || '');
+        setPayMethod(booking.paymentMethod || 'Cash');
+    }, [booking._id]);
+
+    const paymentStatusColors = {
+        'Paid':           { bg: '#d1fae5', color: '#065f46' },
+        'Partially Paid': { bg: '#fef9c3', color: '#854d0e' },
+        'Unpaid':         { bg: '#fee2e2', color: '#991b1b' },
+    };
+    const psColor = paymentStatusColors[booking.paymentStatus || 'Unpaid'];
+
+    async function submitQuote() {
+        if (!quotedPrice || isNaN(quotedPrice) || Number(quotedPrice) <= 0) {
+            setError('Enter a valid price greater than 0.');
+            return;
+        }
+        setSaving(true); setError('');
+        try {
+            const data = await apiFetch(`/api/admin/bookings/${booking._id}/quote`, {
+                method:  'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ quotedPrice: Number(quotedPrice), paymentNotes: quoteNotes }),
+            });
+            onUpdated(data.booking);
+            setShowQuote(false);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    async function submitPayment() {
+        if (amountPaid === '' || isNaN(amountPaid) || Number(amountPaid) < 0) {
+            setError('Enter a valid amount (0 or greater).');
+            return;
+        }
+        setSaving(true); setError('');
+        try {
+            const data = await apiFetch(`/api/admin/bookings/${booking._id}/payment`, {
+                method:  'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ amountPaid: Number(amountPaid), paymentMethod: payMethod, paymentNotes: payNotes }),
+            });
+            onUpdated(data.booking);
+            setShowPayment(false);
+            setPayNotes('');
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    const outstanding = booking.quotedPrice
+        ? Math.max(0, booking.quotedPrice - (booking.amountPaid || 0))
+        : null;
+
+    return (
+        <div className="bp-drawer__section">
+            <p className="bp-drawer__label">Payment</p>
+
+            
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
+                <PaymentPill status={booking.paymentStatus || 'Unpaid'} />
+                {booking.quotedPrice && (
+                    <span style={{ fontSize: '0.85rem', color: 'var(--ad-text-primary)', fontWeight: 600 }}>
+                        Quote: {fmtCur(booking.quotedPrice)}
+                    </span>
+                )}
+                {booking.amountPaid > 0 && (
+                    <span style={{ fontSize: '0.82rem', color: '#16a34a', fontWeight: 600 }}>
+                        Paid: {fmtCur(booking.amountPaid)}
+                    </span>
+                )}
+                {outstanding > 0 && (
+                    <span style={{ fontSize: '0.82rem', color: '#991b1b', fontWeight: 600 }}>
+                        Balance: {fmtCur(outstanding)}
+                    </span>
+                )}
+            </div>
+
+            
+            {booking.paymentMethod && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--ad-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        via
+                    </span>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--ad-text-primary)', background: '#f3f4f6', padding: '2px 10px', borderRadius: 20 }}>
+                        {booking.paymentMethod}
+                    </span>
+                </div>
+            )}
+            {booking.paymentNotes && (
+                <p style={{ fontSize: '0.82rem', color: 'var(--ad-text-secondary)', margin: '0 0 10px', background: '#f8fafc', padding: '8px 12px', borderRadius: 6, borderLeft: '3px solid #e2e8f0' }}>
+                    {booking.paymentNotes}
+                </p>
+            )}
+
+            
+            {error && (
+                <p style={{ color: '#991b1b', fontSize: '0.8rem', margin: '0 0 10px', background: '#fee2e2', padding: '6px 10px', borderRadius: 6 }}>
+                    {error}
+                </p>
+            )}
+
+            
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                <button
+                    onClick={() => { setShowQuote(v => !v); setShowPayment(false); setError(''); }}
+                    style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '8px 14px',
+                        background: showQuote ? '#f1f5f9' : '#1e40af',
+                        color: showQuote ? 'var(--ad-text-primary)' : '#fff',
+                        border: showQuote ? '1.5px solid #e2e8f0' : 'none',
+                        borderRadius: 8, cursor: 'pointer',
+                        fontSize: '0.82rem', fontWeight: 700, fontFamily: 'inherit',
+                        transition: 'all 0.15s',
+                    }}
+                >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                    </svg>
+                    {booking.quotedPrice ? 'Update Quote' : 'Set Quote'}
+                </button>
+
+                {booking.quotedPrice && (
+                    <button
+                        onClick={() => { setShowPayment(v => !v); setShowQuote(false); setError(''); }}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            padding: '8px 14px',
+                            background: showPayment ? '#f1f5f9' : '#065f46',
+                            color: showPayment ? 'var(--ad-text-primary)' : '#fff',
+                            border: showPayment ? '1.5px solid #e2e8f0' : 'none',
+                            borderRadius: 8, cursor: 'pointer',
+                            fontSize: '0.82rem', fontWeight: 700, fontFamily: 'inherit',
+                            transition: 'all 0.15s',
+                        }}
+                    >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        Record Payment
+                    </button>
+                )}
+            </div>
+
+        
+            {showQuote && (
+                <div style={{ background: '#eff6ff', border: '1.5px solid #bfdbfe', borderRadius: 10, padding: 14, marginTop: 4 }}>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--ad-text-muted)', display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        Quoted Price (PHP) *
+                    </label>
+                    <input
+                        type="number" min="1" step="0.01"
+                        value={quotedPrice}
+                        onChange={e => { setQuotedPrice(e.target.value); setError(''); }}
+                        placeholder="e.g. 3500"
+                        disabled={saving}
+                        style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #bfdbfe', borderRadius: 7, fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+                    />
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--ad-text-muted)', display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        Notes (optional — visible to customer)
+                    </label>
+                    <textarea
+                        value={quoteNotes}
+                        onChange={e => setQuoteNotes(e.target.value)}
+                        placeholder="e.g. Includes driver, 3-day minimum, airport pickup"
+                        rows={2} disabled={saving}
+                        style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #bfdbfe', borderRadius: 7, fontSize: '0.875rem', fontFamily: 'inherit', resize: 'vertical', outline: 'none', boxSizing: 'border-box', marginBottom: 10 }}
+                    />
+                    <p style={{ fontSize: '0.75rem', color: '#3b82f6', margin: '0 0 10px' }}>
+                        A quote email will be sent to the customer automatically.
+                    </p>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                            onClick={submitQuote} disabled={saving}
+                            style={{ padding: '8px 18px', background: saving ? '#93c5fd' : '#2563eb', color: '#fff', border: 'none', borderRadius: 7, cursor: saving ? 'not-allowed' : 'pointer', fontSize: '0.85rem', fontWeight: 700, fontFamily: 'inherit', opacity: saving ? 0.7 : 1 }}
+                        >
+                            {saving ? 'Saving...' : 'Save Quote & Email Customer'}
+                        </button>
+                        <button
+                            onClick={() => { setShowQuote(false); setError(''); }}
+                            style={{ padding: '8px 14px', background: 'transparent', border: '1.5px solid #e2e8f0', borderRadius: 7, cursor: 'pointer', fontSize: '0.85rem', color: 'var(--ad-text-muted)', fontFamily: 'inherit' }}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            
+            {showPayment && (
+                <div style={{ background: '#f0fdf4', border: '1.5px solid #a7f3d0', borderRadius: 10, padding: 14, marginTop: 4 }}>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--ad-text-muted)', display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        Amount Received (PHP) — Quote: {fmtCur(booking.quotedPrice)}
+                    </label>
+                    <input
+                        type="number" min="0" step="0.01"
+                        value={amountPaid}
+                        onChange={e => { setAmountPaid(e.target.value); setError(''); }}
+                        placeholder={`e.g. ${booking.quotedPrice}`}
+                        disabled={saving}
+                        style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #a7f3d0', borderRadius: 7, fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+                    />
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--ad-text-muted)', display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        Payment Method
+                    </label>
+                    <select
+                        value={payMethod} onChange={e => setPayMethod(e.target.value)} disabled={saving}
+                        style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #a7f3d0', borderRadius: 7, fontSize: '0.875rem', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8, background: 'white' }}
+                    >
+                        {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--ad-text-muted)', display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        Notes (optional)
+                    </label>
+                    <textarea
+                        value={payNotes} onChange={e => setPayNotes(e.target.value)}
+                        placeholder="e.g. Paid via GCash ref #12345678"
+                        rows={2} disabled={saving}
+                        style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #a7f3d0', borderRadius: 7, fontSize: '0.875rem', fontFamily: 'inherit', resize: 'vertical', outline: 'none', boxSizing: 'border-box', marginBottom: 10 }}
+                    />
+
+                    
+                    {amountPaid !== '' && !isNaN(amountPaid) && booking.quotedPrice && (
+                        <div style={{ background: '#ecfdf5', padding: '8px 12px', borderRadius: 6, marginBottom: 10, fontSize: '0.82rem', color: '#065f46', fontWeight: 600 }}>
+                            Status will be set to: {
+                                Number(amountPaid) >= booking.quotedPrice ? 'Paid' :
+                                Number(amountPaid) > 0 ? 'Partially Paid' : 'Unpaid'
+                            }
+                            {Number(amountPaid) > 0 && Number(amountPaid) < booking.quotedPrice &&
+                                ` (Balance: ${fmtCur(booking.quotedPrice - Number(amountPaid))})`
+                            }
+                        </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                            onClick={submitPayment} disabled={saving}
+                            style={{ padding: '8px 18px', background: saving ? '#86efac' : '#065f46', color: '#fff', border: 'none', borderRadius: 7, cursor: saving ? 'not-allowed' : 'pointer', fontSize: '0.85rem', fontWeight: 700, fontFamily: 'inherit', opacity: saving ? 0.7 : 1 }}
+                        >
+                            {saving ? 'Saving...' : 'Confirm Payment'}
+                        </button>
+                        <button
+                            onClick={() => { setShowPayment(false); setError(''); }}
+                            style={{ padding: '8px 14px', background: 'transparent', border: '1.5px solid #e2e8f0', borderRadius: 7, cursor: 'pointer', fontSize: '0.85rem', color: 'var(--ad-text-muted)', fontFamily: 'inherit' }}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function BookingDrawer({ booking: initialBooking, onClose, onStatusChange, onBookingUpdate }) {
+    const [booking,  setBooking]  = useState(initialBooking);
+    const [updating, setUpdating] = useState(false);
+    const [confirm,  setConfirm]  = useState(null);
     const next = STATUS_TRANSITIONS[booking.status] || [];
+
+    useEffect(() => { setBooking(initialBooking); }, [initialBooking]);
 
     async function handleStatus(newStatus) {
         setConfirm(null);
@@ -80,7 +374,7 @@ function BookingDrawer({ booking, onClose, onStatusChange }) {
     }
 
     const handlePrint = () => {
-        const w = window.open('', '_blank', 'width=700,height=600');
+        const w = window.open('', '_blank', 'width=700,height=700');
         w.document.write(`
             <html><head><title>Booking #${String(booking._id).slice(-8).toUpperCase()}</title>
             <style>
@@ -90,28 +384,30 @@ function BookingDrawer({ booking, onClose, onStatusChange }) {
                 table { width: 100%; border-collapse: collapse; margin-top: 16px; }
                 td   { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
                 td:first-child { font-weight: 600; color: #374151; width: 36%; }
-                .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; }
-                .cost  { font-size: 1.1rem; font-weight: 800; color: #2563eb; }
+                .total { font-size: 1.1rem; font-weight: 800; color: #2563eb; }
                 @media print { body { padding: 16px; } }
             </style></head><body>
             <h1>Booking Receipt</h1>
-            <p class="ref">Ref: ${String(booking._id).slice(-8).toUpperCase()} &nbsp;·&nbsp; Booked on ${fmt(booking.createdAt)}</p>
+            <p class="ref">Ref: ${String(booking._id).slice(-8).toUpperCase()} &nbsp;·&nbsp; ${fmt(booking.createdAt)}</p>
             <table>
                 <tr><td>Status</td><td>${booking.status}</td></tr>
+                <tr><td>Payment</td><td>${booking.paymentStatus || 'Unpaid'}</td></tr>
                 <tr><td>Customer</td><td>${booking.customerName}</td></tr>
-                <tr><td>Email</td><td>${booking.customerEmail || '—'}</td></tr>
-                <tr><td>Phone</td><td>${booking.customerPhone || '—'}</td></tr>
-                <tr><td>Vehicle</td><td>${booking.carId?.title || booking.car || '—'} (${booking.carId?.type || '—'})</td></tr>
+                <tr><td>Email</td><td>${booking.customerEmail || '-'}</td></tr>
+                <tr><td>Phone</td><td>${booking.customerPhone || '-'}</td></tr>
+                <tr><td>Vehicle</td><td>${booking.carId?.title || '-'}</td></tr>
                 ${booking.qty > 1 ? `<tr><td>Quantity</td><td>${booking.qty}</td></tr>` : ''}
                 <tr><td>Pickup Date</td><td>${fmt(booking.startDate)}</td></tr>
                 <tr><td>Return Date</td><td>${fmt(booking.endDate)}</td></tr>
-                <tr><td>Rental Days</td><td>${booking.rentalDays} day${booking.rentalDays !== 1 ? 's' : ''}</td></tr>
+                <tr><td>Rental Days</td><td>${booking.rentalDays}</td></tr>
                 ${booking.pickupLocation ? `<tr><td>Pickup Location</td><td>${booking.pickupLocation}</td></tr>` : ''}
-                <tr><td>Total Cost</td><td class="cost">${fmtCur(booking.totalCost)}</td></tr>
+                ${booking.quotedPrice ? `<tr><td>Quoted Price</td><td class="total">${fmtCur(booking.quotedPrice)}</td></tr>` : ''}
+                ${booking.amountPaid > 0 ? `<tr><td>Amount Paid</td><td>${fmtCur(booking.amountPaid)}</td></tr>` : ''}
+                ${booking.paymentMethod ? `<tr><td>Payment Method</td><td>${booking.paymentMethod}</td></tr>` : ''}
+                ${booking.paymentNotes ? `<tr><td>Notes</td><td>${booking.paymentNotes}</td></tr>` : ''}
             </table>
             <script>window.onload=()=>{window.print();}<\/script>
-            </body></html>
-        `);
+            </body></html>`);
         w.document.close();
     };
 
@@ -119,13 +415,15 @@ function BookingDrawer({ booking, onClose, onStatusChange }) {
         <>
             <div className="bp-drawer-overlay" onClick={onClose}>
                 <div className="bp-drawer" onClick={e => e.stopPropagation()}>
+
+                    
                     <div className="bp-drawer__header">
                         <div>
                             <h3>Booking Details</h3>
                             <p className="bp-drawer__ref">#{String(booking._id).slice(-8).toUpperCase()}</p>
                         </div>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            <button className="bp-drawer__action-btn" onClick={handlePrint} title="Print receipt">
+                            <button className="bp-drawer__action-btn" onClick={handlePrint}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                     <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
                                     <rect x="6" y="14" width="12" height="8"/>
@@ -135,9 +433,11 @@ function BookingDrawer({ booking, onClose, onStatusChange }) {
                             <button className="bp-drawer__close" onClick={onClose}>×</button>
                         </div>
                     </div>
+
                     
                     <div className={`bp-drawer__status-banner bp-drawer__status-banner--${booking.status.toLowerCase()}`}>
                         <StatusBadge status={booking.status} />
+                        <PaymentPill status={booking.paymentStatus || 'Unpaid'} />
                         {next.length > 0 && (
                             <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
                                 {next.map(s => (
@@ -145,49 +445,48 @@ function BookingDrawer({ booking, onClose, onStatusChange }) {
                                         className={`bp-status-btn bp-status-btn--${s.toLowerCase()}`}
                                         onClick={() => setConfirm({ status: s, label: `Mark as ${s}` })}
                                         disabled={updating}>
-                                        {updating ? '…' : `→ ${s}`}
+                                        {updating ? '...' : `-> ${s}`}
                                     </button>
                                 ))}
                             </div>
                         )}
                     </div>
 
+                
                     <div className="bp-drawer__body">
+
+                       
+                        <PaymentPanel
+                            booking={booking}
+                            onUpdated={(updatedBooking) => {
+                                setBooking(updatedBooking);
+                                onBookingUpdate(updatedBooking);
+                            }}
+                        />
+
+                        
                         <div className="bp-drawer__section">
                             <p className="bp-drawer__label">Customer</p>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div className="bp-drawer__avatar">
-                                    {booking.customerName?.charAt(0).toUpperCase()}
-                                </div>
+                                <div className="bp-drawer__avatar">{booking.customerName?.charAt(0).toUpperCase()}</div>
                                 <div>
                                     <p className="bp-drawer__val">{booking.customerName}</p>
-                                    {booking.customerEmail && (
-                                        <a href={`mailto:${booking.customerEmail}`} className="bp-drawer__link">
-                                            {booking.customerEmail}
-                                        </a>
-                                    )}
-                                    {booking.customerPhone && (
-                                        <a href={`tel:${booking.customerPhone}`} className="bp-drawer__link">
-                                            {booking.customerPhone}
-                                        </a>
-                                    )}
+                                    {booking.customerEmail && <a href={`mailto:${booking.customerEmail}`} className="bp-drawer__link">{booking.customerEmail}</a>}
+                                    {booking.customerPhone && <a href={`tel:${booking.customerPhone}`}   className="bp-drawer__link">{booking.customerPhone}</a>}
                                 </div>
                             </div>
                         </div>
 
+                        
                         <div className="bp-drawer__section">
                             <p className="bp-drawer__label">Vehicle</p>
-                            {booking.carId?.image && (
-                                <img src={booking.carId.image} alt={booking.carId.title}
-                                    className="bp-drawer__car-img" />
-                            )}
-                            <p className="bp-drawer__val">{booking.carId?.title || booking.car || '—'}</p>
-                            <p className="bp-drawer__sub">{booking.carId?.type || '—'}</p>
-                            {booking.qty > 1 && (
-                                <span className="bp-drawer__qty-tag">× {booking.qty} units</span>
-                            )}
+                            {booking.carId?.image && <img src={booking.carId.image} alt={booking.carId.title} className="bp-drawer__car-img" />}
+                            <p className="bp-drawer__val">{booking.carId?.title || '-'}</p>
+                            <p className="bp-drawer__sub">{booking.carId?.type || '-'}</p>
+                            {booking.qty > 1 && <span className="bp-drawer__qty-tag">x {booking.qty} units</span>}
                         </div>
 
+                        
                         <div className="bp-drawer__section">
                             <p className="bp-drawer__label">Rental Period</p>
                             <div className="bp-drawer__dates">
@@ -208,38 +507,33 @@ function BookingDrawer({ booking, onClose, onStatusChange }) {
                             </p>
                         </div>
 
+                        
                         {booking.pickupLocation && (
                             <div className="bp-drawer__section">
                                 <p className="bp-drawer__label">Pickup Location</p>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2">
-                                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                                        <circle cx="12" cy="10" r="3"/>
+                                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
                                     </svg>
                                     <p className="bp-drawer__val">{booking.pickupLocation}</p>
                                 </div>
                             </div>
                         )}
 
-                        <div className="bp-drawer__section">
-                            <p className="bp-drawer__label">Total Cost</p>
-                            <p className="bp-drawer__val bp-drawer__val--cost">{fmtCur(booking.totalCost)}</p>
-                        </div>
-
+                        
                         <div className="bp-drawer__section">
                             <p className="bp-drawer__label">Booked On</p>
                             <p className="bp-drawer__val">{fmt(booking.createdAt)}</p>
-                            <p className="bp-drawer__sub">
-                                {new Date(booking.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                            </p>
+                            <p className="bp-drawer__sub">{new Date(booking.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
+
                     </div>
                 </div>
             </div>
 
             {confirm && (
                 <ConfirmDialog
-                    message={`Change status to "${confirm.status}"? ${confirm.status === 'Cancelled' ? 'This will restore the vehicle stock.' : ''}`}
+                    message={`Change status to "${confirm.status}"?${confirm.status === 'Cancelled' ? ' This will restore the vehicle stock.' : ''}`}
                     confirmLabel={confirm.label}
                     confirmClass={confirm.status === 'Cancelled' ? 'bp-confirm__ok--danger' : 'bp-confirm__ok--primary'}
                     onConfirm={() => handleStatus(confirm.status)}
@@ -251,7 +545,7 @@ function BookingDrawer({ booking, onClose, onStatusChange }) {
 }
 
 function exportCSV(bookings) {
-    const headers = ['Ref', 'Customer', 'Email', 'Phone', 'Vehicle', 'Qty', 'Start', 'End', 'Days', 'Location', 'Cost', 'Status', 'Booked On'];
+    const headers = ['Ref', 'Customer', 'Email', 'Phone', 'Vehicle', 'Qty', 'Start', 'End', 'Days', 'Location', 'Quoted Price', 'Amount Paid', 'Outstanding', 'Payment Status', 'Payment Method', 'Booking Status', 'Booked On'];
     const rows = bookings.map(b => [
         String(b._id).slice(-8).toUpperCase(),
         b.customerName || '',
@@ -263,7 +557,11 @@ function exportCSV(bookings) {
         fmt(b.endDate),
         b.rentalDays,
         b.pickupLocation || '',
-        b.totalCost ?? 0,
+        b.quotedPrice ?? '',
+        b.amountPaid ?? 0,
+        b.quotedPrice ? Math.max(0, b.quotedPrice - (b.amountPaid || 0)) : '',
+        b.paymentStatus || 'Unpaid',
+        b.paymentMethod || '',
         b.status,
         fmt(b.createdAt),
     ]);
@@ -279,18 +577,17 @@ function exportCSV(bookings) {
 
 export default function BookingsPage() {
     const [bookings, setBookings] = useState([]);
-    const [loading, setLoading]   = useState(true);
-    const [error, setError]       = useState('');
-    const [filter, setFilter]     = useState('All');
-    const [search, setSearch]     = useState('');
-    const [sort, setSort]         = useState('newest');
+    const [loading,  setLoading]  = useState(true);
+    const [error,    setError]    = useState('');
+    const [filter,   setFilter]   = useState('All');
+    const [search,   setSearch]   = useState('');
+    const [sort,     setSort]     = useState('newest');
     const [selected, setSelected] = useState(null);
-    const [page, setPage]         = useState(1);
+    const [page,     setPage]     = useState(1);
     const searchRef               = useRef(null);
 
     const fetchBookings = useCallback(async () => {
-        setLoading(true);
-        setError('');
+        setLoading(true); setError('');
         try {
             const data = await apiFetch('/api/bookings');
             setBookings(Array.isArray(data) ? data : []);
@@ -305,10 +602,7 @@ export default function BookingsPage() {
 
     useEffect(() => {
         const handler = (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-                e.preventDefault();
-                searchRef.current?.focus();
-            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') { e.preventDefault(); searchRef.current?.focus(); }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
@@ -317,8 +611,7 @@ export default function BookingsPage() {
     async function handleStatusChange(id, newStatus) {
         try {
             const res = await apiFetch(`/api/admin/bookings/${id}/status`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'PUT', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: newStatus }),
             });
             const updated = res.booking;
@@ -327,6 +620,11 @@ export default function BookingsPage() {
         } catch (err) {
             alert(err.message);
         }
+    }
+
+    function handleBookingUpdate(updatedBooking) {
+        setBookings(prev => prev.map(b => b._id === updatedBooking._id ? updatedBooking : b));
+        setSelected(updatedBooking);
     }
 
     const filtered = bookings
@@ -342,8 +640,8 @@ export default function BookingsPage() {
         .sort((a, b) => {
             if (sort === 'newest')  return new Date(b.createdAt) - new Date(a.createdAt);
             if (sort === 'oldest')  return new Date(a.createdAt) - new Date(b.createdAt);
-            if (sort === 'cost_hi') return fmtCurNum(b.totalCost) - fmtCurNum(a.totalCost);
-            if (sort === 'cost_lo') return fmtCurNum(a.totalCost) - fmtCurNum(b.totalCost);
+            if (sort === 'cost_hi') return fmtCurNum(b.quotedPrice || b.totalCost) - fmtCurNum(a.quotedPrice || a.totalCost);
+            if (sort === 'cost_lo') return fmtCurNum(a.quotedPrice || a.totalCost) - fmtCurNum(b.quotedPrice || b.totalCost);
             if (sort === 'start')   return new Date(a.startDate) - new Date(b.startDate);
             return 0;
         });
@@ -362,60 +660,47 @@ export default function BookingsPage() {
     return (
         <div className="bp-root">
 
-            {/* Filter tabs */}
+            
             <div className="bp-tabs">
                 {STATUS_FILTERS.map(s => (
-                    <button key={s}
-                        className={`bp-tab${filter === s ? ' bp-tab--active' : ''}`}
-                        onClick={() => changeFilter(s)}>
-                        {s}
-                        <span className="bp-tab__count">{counts[s]}</span>
+                    <button key={s} className={`bp-tab${filter === s ? ' bp-tab--active' : ''}`} onClick={() => changeFilter(s)}>
+                        {s}<span className="bp-tab__count">{counts[s]}</span>
                     </button>
                 ))}
             </div>
 
-            {/* Toolbar */}
+            
             <div className="bp-toolbar">
                 <div className="bp-search-wrap">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                     </svg>
                     <input ref={searchRef} className="bp-search"
-                        placeholder="Search customer, vehicle, or ref… (Ctrl+F)"
-                        value={search}
-                        onChange={e => changeSearch(e.target.value)} />
-                    {search && (
-                        <button className="bp-search-clear" onClick={() => changeSearch('')}>×</button>
-                    )}
+                        placeholder="Search customer, vehicle, or ref... (Ctrl+F)"
+                        value={search} onChange={e => changeSearch(e.target.value)} />
+                    {search && <button className="bp-search-clear" onClick={() => changeSearch('')}>x</button>}
                 </div>
-
                 <select className="bp-sort-select" value={sort} onChange={e => setSort(e.target.value)}>
                     {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
-
-                <button className="bp-export-btn" onClick={() => exportCSV(filtered)}
-                    title="Export filtered bookings as CSV" disabled={filtered.length === 0}>
+                <button className="bp-export-btn" onClick={() => exportCSV(filtered)} disabled={filtered.length === 0}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
+                        <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
                     </svg>
                     Export CSV
                 </button>
-
                 <button className="bp-refresh-btn" onClick={fetchBookings} title="Refresh">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <polyline points="23 4 23 10 17 10"/>
-                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                        <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
                     </svg>
                 </button>
-
                 <span className="bp-count">{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
             </div>
 
             {error && <div className="bp-banner bp-banner--error">{error}</div>}
 
-            {/* Table */}
+            
             <div className="bp-table-wrap">
                 <table className="bp-table">
                     <thead>
@@ -424,7 +709,8 @@ export default function BookingsPage() {
                             <th>Customer</th>
                             <th>Vehicle</th>
                             <th>Dates</th>
-                            <th>Cost</th>
+                            <th>Quote</th>
+                            <th>Payment</th>
                             <th>Status</th>
                             <th>Booked</th>
                             <th></th>
@@ -433,11 +719,11 @@ export default function BookingsPage() {
                     <tbody>
                         {loading ? (
                             Array.from({ length: 6 }).map((_, i) => (
-                                <tr key={i}><td colSpan={8}><div className="bp-row-skeleton" /></td></tr>
+                                <tr key={i}><td colSpan={9}><div className="bp-row-skeleton" /></td></tr>
                             ))
                         ) : paginated.length === 0 ? (
                             <tr>
-                                <td colSpan={8} className="bp-empty-cell">
+                                <td colSpan={9} className="bp-empty-cell">
                                     <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" style={{ marginBottom: 8 }}>
                                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                                         <polyline points="14 2 14 8 20 8"/>
@@ -450,33 +736,35 @@ export default function BookingsPage() {
                             <tr key={b._id} className="bp-row"
                                 style={{ animationDelay: `${i * 0.03}s` }}
                                 onClick={() => setSelected(b)}>
-                                <td>
-                                    <span className="bp-ref">#{String(b._id).slice(-8).toUpperCase()}</span>
-                                </td>
+                                <td><span className="bp-ref">#{String(b._id).slice(-8).toUpperCase()}</span></td>
                                 <td>
                                     <div className="bp-customer">
                                         <div className="bp-avatar">{b.customerName?.[0] || '?'}</div>
                                         <div>
                                             <p className="bp-name">{b.customerName}</p>
-                                            <p className="bp-email">{b.customerEmail || '—'}</p>
+                                            <p className="bp-email">{b.customerEmail || '-'}</p>
                                         </div>
                                     </div>
                                 </td>
                                 <td>
-                                    <p className="bp-car">{b.carId?.title || b.car || '—'}</p>
-                                    {b.qty > 1 && <p className="bp-qty">× {b.qty} units</p>}
+                                    <p className="bp-car">{b.carId?.title || b.car || '-'}</p>
+                                    {b.qty > 1 && <p className="bp-qty">x {b.qty} units</p>}
                                 </td>
                                 <td>
                                     <p className="bp-date">{fmt(b.startDate)}</p>
-                                    <p className="bp-date bp-date--end">→ {fmt(b.endDate)}</p>
+                                    <p className="bp-date bp-date--end">-&gt; {fmt(b.endDate)}</p>
                                 </td>
-                                <td><span className="bp-cost">{fmtCur(b.totalCost)}</span></td>
+                                <td>
+                                    {b.quotedPrice
+                                        ? <span className="bp-cost">{fmtCur(b.quotedPrice)}</span>
+                                        : <span style={{ fontSize: '0.78rem', color: '#9ca3af', fontStyle: 'italic' }}>Not quoted</span>
+                                    }
+                                </td>
+                                <td><PaymentPill status={b.paymentStatus || 'Unpaid'} /></td>
                                 <td><StatusBadge status={b.status} /></td>
                                 <td><p className="bp-booked">{fmt(b.createdAt)}</p></td>
                                 <td onClick={e => e.stopPropagation()}>
-                                    <button className="bp-view-btn" onClick={() => setSelected(b)}>
-                                        View →
-                                    </button>
+                                    <button className="bp-view-btn" onClick={() => setSelected(b)}>View</button>
                                 </td>
                             </tr>
                         ))}
@@ -484,40 +772,38 @@ export default function BookingsPage() {
                 </table>
             </div>
 
-            {/* Pagination */}
+            
             {totalPages > 1 && (
                 <div className="bp-pagination">
                     <button className="bp-pg-btn" onClick={() => setPage(1)} disabled={page === 1}>«</button>
-                    <button className="bp-pg-btn" onClick={() => setPage(p => p - 1)} disabled={page === 1}>‹ Prev</button>
-
+                    <button className="bp-pg-btn" onClick={() => setPage(p => p - 1)} disabled={page === 1}>Prev</button>
                     <div className="bp-pg-numbers">
                         {Array.from({ length: totalPages }, (_, i) => i + 1)
                             .filter(n => n === 1 || n === totalPages || Math.abs(n - page) <= 1)
                             .reduce((acc, n, idx, arr) => {
-                                if (idx > 0 && n - arr[idx - 1] > 1) acc.push('…');
+                                if (idx > 0 && n - arr[idx - 1] > 1) acc.push('...');
                                 acc.push(n);
                                 return acc;
                             }, [])
-                            .map((n, i) => n === '…'
-                                ? <span key={`e${i}`} className="bp-pg-ellipsis">…</span>
-                                : <button key={n} className={`bp-pg-num${page === n ? ' bp-pg-num--active' : ''}`}
-                                    onClick={() => setPage(n)}>{n}</button>
+                            .map((n, i) => n === '...'
+                                ? <span key={`e${i}`} className="bp-pg-ellipsis">...</span>
+                                : <button key={n} className={`bp-pg-num${page === n ? ' bp-pg-num--active' : ''}`} onClick={() => setPage(n)}>{n}</button>
                             )
                         }
                     </div>
-
-                    <button className="bp-pg-btn" onClick={() => setPage(p => p + 1)} disabled={page === totalPages}>Next ›</button>
+                    <button className="bp-pg-btn" onClick={() => setPage(p => p + 1)} disabled={page === totalPages}>Next</button>
                     <button className="bp-pg-btn" onClick={() => setPage(totalPages)} disabled={page === totalPages}>»</button>
-                    <span className="bp-pg-info">{(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, filtered.length)} of {filtered.length}</span>
+                    <span className="bp-pg-info">{(page - 1) * PER_PAGE + 1}-{Math.min(page * PER_PAGE, filtered.length)} of {filtered.length}</span>
                 </div>
             )}
 
-            {/* Drawer */}
+            
             {selected && (
                 <BookingDrawer
                     booking={selected}
                     onClose={() => setSelected(null)}
                     onStatusChange={handleStatusChange}
+                    onBookingUpdate={handleBookingUpdate}
                 />
             )}
         </div>

@@ -8,6 +8,7 @@ import nodemailer from 'nodemailer';
 import { setServers } from 'node:dns/promises';
 import Car from './models/cars.js';
 import Admin from './models/Admin.js';
+import { classifyUrgency, buildUrgencyReport } from './urgencyClassifier.js';
 
 setServers(['1.1.1.1', '8.8.8.8']);
 dotenv.config();
@@ -20,6 +21,7 @@ const mongoURI   = process.env.MONGODB_URI  || 'mongodb://localhost:27017/car_re
 const JWT_SECRET = process.env.JWT_SECRET   || 'your_fallback_secret_key';
 const tokenBlacklist = new Set();
 
+// ─── Email transporter ────────────────────────────────────────────────
 const transporter = nodemailer.createTransport({
     service: process.env.EMAIL_SERVICE || 'gmail',
     auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
@@ -135,6 +137,7 @@ async function sendEmail(to, subject, html) {
     } catch (e) { console.error('Email error:', e.message); }
 }
 
+// ─── Schemas ──────────────────────────────────────────────────────────
 const bookingSchema = new mongoose.Schema({
     carId:          { type: mongoose.Schema.Types.ObjectId, ref:'Car', required:true },
     qty:            { type:Number, required:true, min:1, default:1 },
@@ -145,15 +148,15 @@ const bookingSchema = new mongoose.Schema({
     endDate:        { type:Date, required:true },
     rentalDays:     { type:Number, required:true, min:1 },
     pickupLocation: { type:String, trim:true },
-    
+    // Admin-set pricing — never derived from public dailyRate
     quotedPrice:    { type:Number, default:null },
     quotedAt:       { type:Date,   default:null },
-    
+    // Payment tracking
     paymentStatus:  { type:String, enum:['Unpaid','Partially Paid','Paid'], default:'Unpaid' },
     amountPaid:     { type:Number, default:0 },
     paymentMethod:  { type:String, enum:['Cash','GCash','Bank Transfer','Other'], default:null },
     paymentNotes:   { type:String, trim:true, default:'' },
-    
+    // totalCost synced with quotedPrice for analytics
     totalCost:      { type:Number, default:0 },
     status:         { type:String, enum:['Pending','Active','Completed','Cancelled'], default:'Pending' },
 }, { timestamps:true });
@@ -174,10 +177,19 @@ const messageSchema = new mongoose.Schema({
     message: { type:String, required:true, trim:true },
     status:  { type:String, enum:['Unread','Read','Archived'], default:'Unread' },
     replies: { type:[replySchema], default:[] },
+
+    // ── Urgency classification ────────────────────────────────────────
+    urgency:          { type:String, enum:['high','medium','low',null], default:null },
+    urgencyScore:     { type:Number, default:null },
+    urgencyBreakdown: { type:Object, default:null },
+    urgencyMethod:    { type:String, enum:['rule-based','ml'], default:'rule-based' },
+    urgencyConfirmed: { type:Boolean, default:false },
+    urgencyCorrected: { type:String, enum:['high','medium','low',null], default:null },
 }, { timestamps:true });
 
 const Message = mongoose.models.Message || mongoose.model('Message', messageSchema, 'messages');
 
+// ─── Auth middleware ──────────────────────────────────────────────────
 function requireAdmin(req, res, next) {
     const auth = req.headers.authorization;
     if (!auth?.startsWith('Bearer ')) return res.status(401).json({ message:'No token provided.' });
@@ -190,6 +202,7 @@ function requireAdmin(req, res, next) {
     } catch { return res.status(401).json({ message:'Invalid or expired token.' }); }
 }
 
+// ─── DB ───────────────────────────────────────────────────────────────
 mongoose.connect(mongoURI)
     .then(() => {
         console.log('--- Database Info ---');
@@ -199,6 +212,10 @@ mongoose.connect(mongoURI)
         console.log('---------------------');
     })
     .catch(err => console.error('MongoDB Error:', err));
+
+// ═══════════════════════════════════════════════════════════════════════
+//  PUBLIC
+// ═══════════════════════════════════════════════════════════════════════
 
 app.get('/api/cars', async (req, res) => {
     try { res.json(await Car.find()); }
@@ -272,11 +289,27 @@ app.post('/api/messages', async (req, res) => {
     try {
         const { name, email, subject, message } = req.body;
         if (!name||!email||!message) return res.status(400).json({ message:'Name, email, and message are required.' });
-        const msg = await Message.create({ name:name.trim(), email:email.trim().toLowerCase(), subject:subject?.trim()||'', message:message.trim() });
-        console.log(`New message from: ${msg.email}`);
+        // Classify urgency immediately at creation time
+        const { urgency, score, breakdown } = classifyUrgency(message.trim(), subject?.trim()||'');
+
+        const msg = await Message.create({
+            name:             name.trim(),
+            email:            email.trim().toLowerCase(),
+            subject:          subject?.trim()||'',
+            message:          message.trim(),
+            urgency,
+            urgencyScore:     score,
+            urgencyBreakdown: breakdown,
+            urgencyMethod:    'rule-based',
+        });
+        console.log(`New message from: ${msg.email} [urgency: ${urgency}, score: ${score}]`);
         return res.status(201).json({ message:'Message received. Thank you!', id:msg._id });
     } catch (err) { console.error('Message error:', err); res.status(500).json({ message:'Server Error.' }); }
 });
+
+// ═══════════════════════════════════════════════════════════════════════
+//  ADMIN AUTH
+// ═══════════════════════════════════════════════════════════════════════
 
 app.post('/api/admin/login', async (req, res) => {
     const { identifier, password, rememberMe } = req.body;
@@ -296,6 +329,9 @@ app.post('/api/admin/logout', requireAdmin, (req, res) => {
     res.json({ message:'Logged out successfully.' });
 });
 
+// ═══════════════════════════════════════════════════════════════════════
+//  ADMIN: BOOKINGS
+// ═══════════════════════════════════════════════════════════════════════
 
 app.get('/api/bookings', requireAdmin, async (req, res) => {
     try { res.json(await Booking.find().sort({ createdAt:-1 }).populate('carId','title type image')); }
@@ -333,6 +369,9 @@ app.put('/api/admin/bookings/:id/status', requireAdmin, async (req, res) => {
     }
 });
 
+// PUT /api/admin/bookings/:id/quote
+// Body: { quotedPrice: Number, paymentNotes?: String }
+// Sets the admin-quoted price and emails the customer automatically.
 app.put('/api/admin/bookings/:id/quote', requireAdmin, async (req, res) => {
     const { quotedPrice, paymentNotes } = req.body;
     if (quotedPrice==null||isNaN(quotedPrice)||Number(quotedPrice)<=0)
@@ -341,7 +380,7 @@ app.put('/api/admin/bookings/:id/quote', requireAdmin, async (req, res) => {
         const booking = await Booking.findByIdAndUpdate(req.params.id, {
             quotedPrice:  Number(quotedPrice),
             quotedAt:     new Date(),
-            totalCost:    Number(quotedPrice),   
+            totalCost:    Number(quotedPrice),   // keeps analytics in sync
             paymentNotes: paymentNotes?.trim()||'',
         }, { new:true }).populate('carId','title type image');
         if (!booking) return res.status(404).json({ message:'Booking not found.' });
@@ -354,6 +393,9 @@ app.put('/api/admin/bookings/:id/quote', requireAdmin, async (req, res) => {
     } catch (err) { console.error('Quote error:', err); res.status(500).json({ message:'Server Error.' }); }
 });
 
+// PUT /api/admin/bookings/:id/payment
+// Body: { amountPaid: Number, paymentMethod?: String, paymentNotes?: String }
+// Derives paymentStatus automatically: Unpaid / Partially Paid / Paid
 app.put('/api/admin/bookings/:id/payment', requireAdmin, async (req, res) => {
     const { amountPaid, paymentMethod, paymentNotes } = req.body;
     if (amountPaid==null||isNaN(amountPaid)||Number(amountPaid)<0)
@@ -375,6 +417,12 @@ app.put('/api/admin/bookings/:id/payment', requireAdmin, async (req, res) => {
     } catch (err) { console.error('Payment error:', err); res.status(500).json({ message:'Server Error.' }); }
 });
 
+// DELETE /api/admin/bookings/:id
+// Deletes the booking.
+// Stock restoration rules:
+//   Pending  → restore stock (booking was holding units, never activated)
+//   Active   → restore stock (vehicle is still out, admin decision to force-delete)
+//   Completed / Cancelled → no stock change (stock was already restored when status was set)
 app.delete('/api/admin/bookings/:id', requireAdmin, async (req, res) => {
     const RESTORE_STATUSES = ['Pending', 'Active'];
     const session = await mongoose.startSession();
@@ -386,7 +434,7 @@ app.delete('/api/admin/bookings/:id', requireAdmin, async (req, res) => {
             return res.status(404).json({ message: 'Booking not found.' });
         }
 
-        
+        // Restore stock only for statuses that still hold inventory
         if (RESTORE_STATUSES.includes(booking.status)) {
             const car = await Car.findById(booking.carId).session(session);
             if (car) {
@@ -409,6 +457,9 @@ app.delete('/api/admin/bookings/:id', requireAdmin, async (req, res) => {
     }
 });
 
+// ═══════════════════════════════════════════════════════════════════════
+//  ADMIN: FLEET
+// ═══════════════════════════════════════════════════════════════════════
 
 app.get('/api/admin/cars', requireAdmin, async (req, res) => {
     try { res.json(await Car.find().sort({ createdAt:-1 })); }
@@ -450,16 +501,19 @@ app.delete('/api/admin/cars/:id', requireAdmin, async (req, res) => {
     } catch (err) { console.error(err); res.status(500).json({ message:'Server Error.' }); }
 });
 
+// ═══════════════════════════════════════════════════════════════════════
+//  ADMIN: DASHBOARD ANALYTICS
+// ═══════════════════════════════════════════════════════════════════════
 
 app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
     try {
-        
+        // Completed revenue
         const [{ total: totalRevenue } = { total:0 }] = await Booking.aggregate([
             { $match:{ status:'Completed' } },
             { $group:{ _id:null, total:{ $sum:'$totalCost' } } },
         ]);
 
-        
+        // 7-day chart
         const ago7 = new Date(); ago7.setDate(ago7.getDate()-7); ago7.setHours(0,0,0,0);
         const daily = await Booking.aggregate([
             { $match:{ status:'Completed', updatedAt:{ $gte:ago7 } } },
@@ -472,7 +526,7 @@ app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
             return { date:ds, revenue:daily.find(r=>r._id===ds)?.revenue??0 };
         });
 
-        
+        // Payment pipeline
         const pAgg = await Booking.aggregate([
             { $match:{ status:{ $ne:'Cancelled' }, quotedPrice:{ $gt:0 } } },
             { $group:{ _id:'$paymentStatus', totalQuoted:{ $sum:'$quotedPrice' }, totalCollected:{ $sum:'$amountPaid' }, count:{ $sum:1 } } },
@@ -485,7 +539,7 @@ app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
         }
         pipeline.total = pipeline.confirmed + pipeline.partial + pipeline.outstanding;
 
-        
+        // Avg quote by vehicle type
         const avgByType = await Booking.aggregate([
             { $match:{ quotedPrice:{ $gt:0 } } },
             { $lookup:{ from:'cars', localField:'carId', foreignField:'_id', as:'car' } },
@@ -494,7 +548,7 @@ app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
             { $sort:{ avgPrice:-1 } },
         ]);
 
-        
+        // Upcoming scheduled revenue (next 30 days)
         const now = new Date(), out30 = new Date(); out30.setDate(now.getDate()+30);
         const upcoming = await Booking.aggregate([
             { $match:{ status:{ $in:['Pending','Active'] }, quotedPrice:{ $gt:0 }, startDate:{ $gte:now, $lte:out30 } } },
@@ -502,12 +556,12 @@ app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
             { $sort:{ '_id.year':1, '_id.week':1 } },
         ]);
 
-        
+        // Fleet
         const fAgg = await Car.aggregate([{ $group:{ _id:'$status', count:{ $sum:1 } } }]);
         const fMap = fAgg.reduce((a,x)=>{ a[x._id]=x.count; return a; }, {});
         const fleet = { total:await Car.countDocuments(), available:fMap['Available']??0, rented:fMap['Rented']??0, maintenance:fMap['Maintenance']??0 };
 
-        
+        // Recent 5 bookings
         const recent = await Booking.find().sort({ createdAt:-1 }).limit(5).populate('carId','title type licensePlate').lean();
         const recentBookings = recent.map(b => ({
             id:b._id, customerName:b.customerName, customerEmail:b.customerEmail||'N/A',
@@ -517,7 +571,7 @@ app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
             status:b.status, createdAt:b.createdAt,
         }));
 
-        
+        // Booking stats by status
         const sAgg = await Booking.aggregate([{ $group:{ _id:'$status', count:{ $sum:1 } } }]);
         const bookingStats = sAgg.reduce((a,x)=>{ a[x._id.toLowerCase()]=x.count; return a; }, { pending:0, active:0, completed:0, cancelled:0 });
 
@@ -528,6 +582,9 @@ app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
     }
 });
 
+// ═══════════════════════════════════════════════════════════════════════
+//  ADMIN: MESSAGES
+// ═══════════════════════════════════════════════════════════════════════
 
 app.get('/api/admin/messages', requireAdmin, async (req, res) => {
     try { res.json(await Message.find().sort({ createdAt:-1 })); }
@@ -569,5 +626,75 @@ app.post('/api/admin/messages/:id/reply', requireAdmin, async (req, res) => {
     } catch (err) { console.error('Reply error:', err); res.status(500).json({ message:'Server Error.' }); }
 });
 
+// PUT /api/admin/messages/:id/urgency
+// Admin corrects the urgency classification.
+// Body: { urgency: 'high'|'medium'|'low' }
+// Saves the correction as urgencyCorrected so it can seed future training.
+app.put('/api/admin/messages/:id/urgency', requireAdmin, async (req, res) => {
+    const { urgency } = req.body;
+    if (!['high','medium','low'].includes(urgency))
+        return res.status(400).json({ message:"urgency must be 'high', 'medium', or 'low'." });
+    try {
+        const msg = await Message.findByIdAndUpdate(
+            req.params.id,
+            {
+                urgency,
+                urgencyConfirmed:  true,
+                urgencyCorrected:  urgency,  // stores the human label for future ML training
+            },
+            { new: true }
+        );
+        if (!msg) return res.status(404).json({ message:'Message not found.' });
+        console.log(`Urgency corrected: ${msg._id} -> ${urgency}`);
+        res.json({ message:'Urgency updated.', msg });
+    } catch (err) {
+        console.error('Urgency update error:', err);
+        res.status(500).json({ message:'Server Error.' });
+    }
+});
+
+// POST /api/admin/messages/reclassify
+// Re-runs the classifier on all messages that have never been manually confirmed.
+// Useful after updating keyword lists.
+app.post('/api/admin/messages/reclassify', requireAdmin, async (req, res) => {
+    try {
+        const messages = await Message.find({ urgencyConfirmed: { $ne: true } });
+        let updated = 0;
+
+        for (const msg of messages) {
+            const { urgency, score, breakdown } = classifyUrgency(msg.message, msg.subject);
+            await Message.findByIdAndUpdate(msg._id, {
+                urgency,
+                urgencyScore:     score,
+                urgencyBreakdown: breakdown,
+                urgencyMethod:    'rule-based',
+            });
+            updated++;
+        }
+
+        console.log(`Reclassified ${updated} messages`);
+        res.json({ message:`Reclassified ${updated} message(s).`, updated });
+    } catch (err) {
+        console.error('Reclassify error:', err);
+        res.status(500).json({ message:'Server Error.' });
+    }
+});
+
+// GET /api/admin/messages/urgency-report
+// Returns urgency distribution counts — used by the MessagesPage summary bar.
+app.get('/api/admin/messages/urgency-report', requireAdmin, async (req, res) => {
+    try {
+        const messages = await Message.find({}, 'urgency status');
+        const report = buildUrgencyReport(messages);
+        res.json(report);
+    } catch (err) {
+        console.error('Urgency report error:', err);
+        res.status(500).json({ message:'Server Error.' });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+//  START
+// ═══════════════════════════════════════════════════════════════════════
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

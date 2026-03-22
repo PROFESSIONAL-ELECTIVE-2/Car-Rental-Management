@@ -8,7 +8,45 @@ import nodemailer from 'nodemailer';
 import { setServers } from 'node:dns/promises';
 import Car from './models/cars.js';
 import Admin from './models/Admin.js';
-import { classifyUrgency, buildUrgencyReport } from './urgencyClassifier.js';
+// ── Urgency microservice (Python/Flask on :5001) ─────────────────────────────
+const URGENCY_URL = process.env.URGENCY_SERVICE_URL || 'http://localhost:5001';
+
+/**
+ * callClassifier(message, subject) → { urgency, score, breakdown, confidence }
+ * Calls the Flask urgency microservice.  Falls back to { urgency: 'low', score: 0 }
+ * if the service is unreachable so the rest of the API is never blocked.
+ */
+async function callClassifier(message, subject = '') {
+    try {
+        const res = await fetch(`${URGENCY_URL}/classify`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ message, subject }),
+            signal:  AbortSignal.timeout(4000),   // 4-second timeout
+        });
+        if (!res.ok) throw new Error(`Classifier HTTP ${res.status}`);
+        return await res.json();
+    } catch (err) {
+        console.warn(`[urgency] classifier unreachable: ${err.message} — defaulting to low`);
+        return { urgency: 'low', score: 0, breakdown: {}, confidence: 'fallback' };
+    }
+}
+
+/**
+ * callBatchReclassify(messages) → [{ _id, urgency, score, breakdown }, ...]
+ * Used by the reclassify admin route.
+ */
+async function callBatchReclassify(messages) {
+    const res = await fetch(`${URGENCY_URL}/reclassify`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ messages }),
+        signal:  AbortSignal.timeout(30000),
+    });
+    if (!res.ok) throw new Error(`Reclassify HTTP ${res.status}`);
+    const data = await res.json();
+    return data.results || [];
+}
 
 setServers(['1.1.1.1', '8.8.8.8']);
 dotenv.config();
@@ -290,7 +328,7 @@ app.post('/api/messages', async (req, res) => {
         const { name, email, subject, message } = req.body;
         if (!name||!email||!message) return res.status(400).json({ message:'Name, email, and message are required.' });
         // Classify urgency immediately at creation time
-        const { urgency, score, breakdown } = classifyUrgency(message.trim(), subject?.trim()||'');
+        const { urgency, score, breakdown } = await callClassifier(message.trim(), subject?.trim()||'');
 
         const msg = await Message.create({
             name:             name.trim(),
@@ -658,21 +696,24 @@ app.put('/api/admin/messages/:id/urgency', requireAdmin, async (req, res) => {
 // Useful after updating keyword lists.
 app.post('/api/admin/messages/reclassify', requireAdmin, async (req, res) => {
     try {
-        const messages = await Message.find({ urgencyConfirmed: { $ne: true } });
-        let updated = 0;
+        const dbMessages = await Message.find({ urgencyConfirmed: { $ne: true } });
+        // Send all unconfirmed messages to Python service in one batch call
+        const results = await callBatchReclassify(
+            dbMessages.map(m => ({ _id: String(m._id), message: m.message, subject: m.subject || '' }))
+        );
 
-        for (const msg of messages) {
-            const { urgency, score, breakdown } = classifyUrgency(msg.message, msg.subject);
-            await Message.findByIdAndUpdate(msg._id, {
-                urgency,
-                urgencyScore:     score,
-                urgencyBreakdown: breakdown,
-                urgencyMethod:    'rule-based',
+        let updated = 0;
+        for (const r of results) {
+            await Message.findByIdAndUpdate(r._id, {
+                urgency:          r.urgency,
+                urgencyScore:     r.score,
+                urgencyBreakdown: r.breakdown,
+                urgencyMethod:    'rule-based-v3',
             });
             updated++;
         }
 
-        console.log(`Reclassified ${updated} messages`);
+        console.log(`Reclassified ${updated} messages via Python service`);
         res.json({ message:`Reclassified ${updated} message(s).`, updated });
     } catch (err) {
         console.error('Reclassify error:', err);
@@ -684,8 +725,15 @@ app.post('/api/admin/messages/reclassify', requireAdmin, async (req, res) => {
 // Returns urgency distribution counts — used by the MessagesPage summary bar.
 app.get('/api/admin/messages/urgency-report', requireAdmin, async (req, res) => {
     try {
-        const messages = await Message.find({}, 'urgency status');
-        const report = buildUrgencyReport(messages);
+        const msgs = await Message.find({}, 'urgency status');
+        // Build report locally — no need to call Python for simple counting
+        const report = msgs.reduce((acc, m) => {
+            const urg = m.urgency || 'unclassified';
+            acc.total++;
+            acc[urg] = (acc[urg] || 0) + 1;
+            if (urg === 'high' && m.status === 'Unread') acc.highUnread++;
+            return acc;
+        }, { total:0, high:0, medium:0, low:0, unclassified:0, highUnread:0 });
         res.json(report);
     } catch (err) {
         console.error('Urgency report error:', err);

@@ -4,9 +4,10 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "start": "node server.js",
+  "start:urgency": "python urgency_service.py",
+  "dev": "concurrently \"node server.js\" \"python urgency_service.py\""
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -21,4 +22,5 @@
     "mongoose": "^9.2.2",
     "nodemailer": "^8.0.3"
   }
+  
 }

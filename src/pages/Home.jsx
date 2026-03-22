@@ -42,7 +42,6 @@ function Home() {
     return (
         <main className="home-container">
             
-            {/* Hero Section */}
             <section className="hero-section">
                 <div className="hero-overlay">
                     <div className="hero-content">
@@ -50,26 +49,39 @@ function Home() {
                             PREMIUM FLEET. UNMATCHED SERVICE.
                         </span>
 
-                        <h1>Triple R and A Car Rental</h1>
+                        <h1>Triple R & A Transport Services</h1>
 
                         <p>
-                            Reliable, affordable, and ready for your next journey.
-                            We provide high-quality vehicles for family trips,
-                            business travel, and daily rentals.
+                            Experience the best car rental service with a wide range of vehicles to choose from.
                         </p>
 
                         <div className="hero-cta">
-                            <Button onClick={() => navigate('/rent')}>
+                            <Button onClick={() => navigate('/fleet')}>
                                 View All Vehicles
                             </Button>
+
+                            <button
+                                className="admin-login-btn"
+                                onClick={() => navigate('/admin/login')}
+                                aria-label="Admin Login"
+                            >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                </svg>
+                                Admin Login
+                            </button>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* Information Section */}
             <section className="info-section">
+                <div className='section-header'>
+                    <h2>Why Choose Us?</h2>
+                </div>
                 <div className="info-grid">
+                    
                     <div className="info-card">
                         <h3>Well-Maintained Vehicles</h3>
                         <p>
@@ -87,7 +99,7 @@ function Home() {
                     </div>
 
                     <div className="info-card">
-                        <h3>24/7 Customer Support</h3>
+                        <h3>Quality Customer Support</h3>
                         <p>
                             Dedicated assistance and roadside support available
                             throughout your rental period.
@@ -96,7 +108,6 @@ function Home() {
                 </div>
             </section>
 
-            {/* Featured Fleet Section */}
             <section className="featured-section">
                 <header className="section-header">
                     <h2>Featured Fleet</h2>
@@ -126,6 +137,27 @@ function Home() {
                     ))}
                 </div>
             </section>
+            
+            <div className="socmed-btns-container">
+                <button className="floating-btn" onClick={() => navigate('Facebook')} aria-label="Facebook">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                </button>
+                
+                <button className="floating-btn" onClick={() => navigate('X')} aria-label="X">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M4 4l11.733 16h4.267l-11.733-16z"/>
+                        <path d="M4 20l6.768-6.768m2.464-2.464L20 4"/>
+                    </svg>
+                </button>
+
+                <button className="floating-btn" onClick={() => navigate('Instagram')} aria-label="Instagram">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+                        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+                    </svg>
+                </button>
+            </div>
 
         </main>
     );

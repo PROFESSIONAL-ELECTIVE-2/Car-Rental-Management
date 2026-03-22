@@ -1,82 +1,176 @@
-.home-container {
-    font-family: 'Inter', sans-serif;
-    color: #333;
+:root {
+    --primary-blue: #2563eb;
+    --primary-blue-dark: #1d4ed8;
+    --dark-grey: #111827;
+    --light-grey: #f9fafb;
+    --accent-gold: #ffc107;
 }
 
-/* Hero Section */
+.home-container {
+    font-family: 'Inter', sans-serif;
+    color: var(--dark-grey);
+}
+
 .hero-section {
-    height: 70vh;
-    background: url('https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=1600') center/cover no-repeat;
+    height: 91vh;
+    background: url('https://media-public.canva.com/XRv8s/MAEOX4XRv8s/1/s2.jpg') center/cover no-repeat;
     position: relative;
     display: flex;
     align-items: center;
 }
 
 .hero-overlay {
-    background: rgba(0, 0, 0, 0.6); /* Darker overlay for professional feel */
+    background: rgba(0, 0, 0, 0.6);
     width: 100%;
     height: 100%;
     display: flex;
+    justify-content: center;
     align-items: center;
-    padding: 0 10%;
+    padding: 0;
 }
 
 .hero-content {
-    color: white;
-    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    color: #1c1e32;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
 }
 
 .hero-subtitle {
     display: block;
-    font-size: 0.9rem;
+    font-size: 3.5rem !important; 
+    font-style: italic;
+    font-weight: 600;
     letter-spacing: 2px;
-    color: #ffc107; /* Gold accent */
-    margin-bottom: 10px;
+    color: var(--accent-gold);
+    margin-bottom: 50px !important;
+    white-space: nowrap;
 }
 
 .hero-content h1 {
-    font-size: 3.5rem;
-    margin-bottom: 20px;
+    display: block;
+    font-size: 2.5rem !important;
+    margin-bottom: 15px !important;
     line-height: 1.1;
+    white-space: nowrap;
 }
 
 .hero-content p {
-    font-size: 1.2rem;
-    margin-bottom: 30px;
+    display: block;
+    font-size: 1.5rem !important;
+    margin-bottom: 50px !important;
+    opacity: 0.9;
+    white-space: nowrap;
+}
+
+.hero-cta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.hero-cta button {
+    background: #ffc107;
+    color: #375d97;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.3s, transform 0.2s;
+}
+
+.hero-cta button:hover {
+    background: #ffc107cc;
+    transform: translateY(-2px);
+}
+
+/* Admin Login Button */
+.admin-login-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: rgba(255, 255, 255, 0.75) !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    padding: 11px 20px !important;
+    border-radius: 8px;
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s !important;
+    white-space: nowrap;
+}
+
+.admin-login-btn:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    border-color: rgba(255, 255, 255, 0.45) !important;
+    transform: translateY(-2px) !important;
+}
+
+.admin-login-btn svg {
+    flex-shrink: 0;
     opacity: 0.9;
 }
 
-/* Information Section */
 .info-section {
-    padding: 60px 10%;
-    background: #f8f9fa;
+    padding: 60px 10% !important;
+    background: var(--light-grey);
+}
+
+.info {
+    text-align: center;
+    font-size: 2rem;
+    color: var(--primary-blue);
+    margin-bottom: 40px;
 }
 
 .info-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 30px;
 }
 
 .info-card {
     text-align: center;
-    padding: 20px;
+    padding: 25px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: transform 0.2s;
+}
+
+.info-card:hover {
+    transform: translateY(-4px);
 }
 
 .info-card h3 {
     margin-bottom: 15px;
-    color: #222;
+    color: #1c1e32 !important;
+}
+
+.info-card:hover h3 {
+    background: linear-gradient(to right, #ffc107, #1c1e32);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .info-card p {
     font-size: 0.95rem;
-    color: #666;
+    color: #555;
     line-height: 1.6;
 }
 
-
 .featured-section {
-    padding: 80px 10%;
+    padding: 20px 10% !important;
+    margin-bottom: 50px !important;
 }
 
 .section-header {
@@ -86,6 +180,7 @@
 
 .section-header h2 {
     font-size: 2.5rem;
+    color: #375d97 !important;
     margin-bottom: 10px;
 }
 
@@ -97,10 +192,83 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 30px;
+    justify-content: center;
+}
+
+.car-grid > * {
+    background: var(--light-grey);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: transform 0.2s;
+}
+
+.car-grid > *:hover {
+    transform: translateY(-4px);
+}
+
+.car-grid img {
+    width: 100%;
+    aspect-ratio: 16/9; 
+    object-fit: cover;  
+    display: block;
+    border-bottom: 1px solid #ddd;
+}
+
+.car-grid .card-content {
+    padding: 20px;
+}
+
+.status-message,
+.error-message {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 2rem;
+    border-radius: 10px;
+    font-size: 1rem;
+}
+
+.status-message { background: #f9fafb; color: #6b7280; }
+.error-message { background: #fee2e2; color: #b91c1c; }
+
+.socmed-btns-container {
+    position: fixed;
+    right: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;              
+    z-index: 10000;
+}
+
+.floating-btn {
+    background-color: var(--accent-gold);
+    width: 50px;
+    height: 50px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #375d97;
+    box-shadow: -2px 2px 10px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+    border-radius: 50%;
+}
+
+.floating-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: -4px 4px 15px rgba(0,0,0,0.3);
+    opacity: 0.9;
 }
 
 @media (max-width: 768px) {
     .hero-content h1 { font-size: 2.5rem; }
     .info-grid { grid-template-columns: 1fr; }
+    .car-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
     .hero-overlay { padding: 0 5%; }
+    .hero-cta { flex-direction: column; align-items: flex-start; }
 }

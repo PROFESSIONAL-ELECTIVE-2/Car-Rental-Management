@@ -1,102 +1,87 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Card from '../features/Card.jsx';
 import RentModal from '../features/RentModal.jsx';
 import SearchBar from '../features/SearchBar.jsx';
 import './Rent.css';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+async function safeJson(res) {
+    const text = await res.text();
+    try { return JSON.parse(text); }
+    catch { throw new Error(`Server error (HTTP ${res.status}). Is the backend running?`); }
+}
 
 function Rent() {
-    const [cars, setCars] = useState([]);
+    const [cars, setCars]               = useState([]);
     const [selectedCar, setSelectedCar] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [searchQuery, setSearchQuery] = useState("");
+    const [loading, setLoading]         = useState(true);
+    const [error, setError]             = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
-    /* =========================
-       Fetch Cars
-    ========================== */
-    useEffect(() => {
-        const fetchCars = async () => {
-            try {
-                setLoading(true);
-                setError(null);
-
-                const response = await fetch(`${API_BASE_URL}/api/cars`);
-
-                if (!response.ok) {
-                    throw new Error(`Server error: ${response.status}`);
-                }
-
-                const data = await response.json();
-                setCars(Array.isArray(data) ? data : []);
-            } catch (err) {
-                console.error("Error fetching cars:", err);
-                setError("Unable to load vehicles. Please try again later.");
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchCars();
+    const fetchCars = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const res  = await fetch(`${API_URL}/api/cars`);
+            const data = await safeJson(res);
+            if (!res.ok) throw new Error(data.message || `Server error: ${res.status}`);
+            setCars(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Failed to fetch cars:', err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
-    /* =========================
-       Search Filtering
-    ========================== */
-    const filteredCars = useMemo(() => {
-        if (!searchQuery.trim()) return cars;
+    useEffect(() => { fetchCars(); }, [fetchCars]);
 
+    const filteredCars = cars.filter(car => {
         const term = searchQuery.toLowerCase();
+        return [car.name, car.make, car.brand, car.model, car.title, car.type]
+            .filter(Boolean)
+            .some(field => field.toString().toLowerCase().includes(term));
+    });
 
-        return cars.filter(car =>
-            [car.name, car.make, car.brand, car.model, car.title, car.type]
-                .filter(Boolean)
-                .some(field => field.toLowerCase().includes(term))
-        );
-    }, [cars, searchQuery]);
-
-    /* =========================
-       Handle Rental
-    ========================== */
-    const handleRentConfirm = async (carId, details) => {
+    // Handles a batch of bookings — one per cart item
+    // bookings = [{ carId, qty, customerName, customerEmail, customerPhone,
+    //               startDate, endDate, rentalDays, pickupLocation }, ...]
+    const handleRentConfirm = async (bookings) => {
         try {
-            const response = await fetch(
-                `${API_BASE_URL}/api/cars/rent/${carId}`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(details)
-                }
-            );
+            const res = await fetch(`${API_URL}/api/bookings/batch`, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ bookings }),
+            });
 
-            if (!response.ok) {
-                throw new Error("Rental failed");
-            }
+            const result = await safeJson(res);
+            if (!res.ok) throw new Error(result.message || 'Booking failed.');
 
-            // Optimistic UI update
-            setCars(prev =>
-                prev.map(car =>
-                    car._id === carId
-                        ? { ...car, stock: Math.max(car.stock - 1, 0) }
-                        : car
-                )
-            );
+            // Decrement stock locally for each booked vehicle
+            setCars(prev => prev.map(c => {
+                const booked = bookings.find(b => b.carId === c._id);
+                return booked
+                    ? { ...c, stock: Math.max(0, c.stock - booked.qty) }
+                    : c;
+            }));
 
             setSelectedCar(null);
 
+            const refs = result.bookings?.map(b => b._id).join(', ') ?? 'N/A';
+            alert(`✅ Booking confirmed!\nReference IDs: ${refs}`);
+
         } catch (err) {
-            console.error("Rental error:", err);
-            alert("Unable to process rental. Please try again.");
+            console.error('Booking error:', err);
+            alert(`❌ ${err.message}`);
         }
     };
 
     return (
         <div className="rent-page">
-
             <header className="rent-header">
-                <h1>Available Vehicles</h1>
-                <p>Browse our complete fleet and book your next ride.</p>
+                <h1>Our Fleet</h1>
+                <p>Select from our range of well-maintained vehicles.</p>
             </header>
 
             <SearchBar
@@ -106,44 +91,33 @@ function Rent() {
             />
 
             <main className="fleet-grid">
-
-                {loading && (
-                    <p className="status-message">Loading vehicles...</p>
-                )}
-
-                {error && (
-                    <p className="error-message">{error}</p>
-                )}
-
+                {loading && <p className="status-message">Loading vehicles...</p>}
+                {!loading && error && <p className="error-message">{error}</p>}
                 {!loading && !error && filteredCars.length === 0 && (
                     <div className="no-results">
-                        No vehicles found for "<strong>{searchQuery}</strong>"
+                        {searchQuery
+                            ? <>No cars found for "<strong>{searchQuery}</strong>"</>
+                            : 'No vehicles available at the moment.'}
                     </div>
                 )}
-
                 {!loading && !error && filteredCars.map(car => (
                     <Card
                         key={car._id}
                         {...car}
                         disabled={car.stock === 0}
-                        onRent={() => {
-                            if (car.stock > 0) {
-                                setSelectedCar(car);
-                            }
-                        }}
+                        onRent={() => setSelectedCar(car)}
                     />
                 ))}
-
             </main>
 
             {selectedCar && (
                 <RentModal
                     car={selectedCar}
+                    allCars={cars}          // pass full list so user can add more vehicles
                     onClose={() => setSelectedCar(null)}
                     onConfirm={handleRentConfirm}
                 />
             )}
-
         </div>
     );
 }

@@ -7,7 +7,7 @@
     font-size: 1rem;
     cursor: pointer;
     transition: background-color 0.3s ease;
-    margin: 10px;
+    margin: 0px;
 }
 
 .custom-button:hover {

@@ -43,7 +43,6 @@ const BookingCalendar = ({ onDateSelect }) => {
         setStartDate(null);
         setEndDate(null);
         setHoverDate(null);
-        // Explicitly pass nulls so the parent resets its Total Days and Pickup Date
         onDateSelect({ start: null, end: null });
     };
 

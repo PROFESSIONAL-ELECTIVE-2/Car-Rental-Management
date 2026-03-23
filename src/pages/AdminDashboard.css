@@ -4,6 +4,7 @@
     --primary-blue-dark: #1d4ed8;
     --accent-gold:       #ffc107;
     --accent-gold-light: #ffe08a;
+    --accent-green:      #10b981;
     --dark-grey:         #111827;
     --ad-sidebar-bg:     #0d1117;
     --ad-sidebar-border: rgba(255,255,255,0.06);
@@ -816,7 +817,7 @@
 
 .ad-donut__lbl {
     font-size: 0.65rem;
-    color: var(--ad-text-muted);
+    color: var(--accent-green);
     font-weight: 600;
     letter-spacing: 0.04em;
 }
@@ -841,7 +842,7 @@
     flex-shrink: 0;
 }
 .ad-fleet__dot--gold { background: var(--accent-gold); }
-.ad-fleet__dot--blue { background: var(--primary-blue); }
+.ad-fleet__dot--blue { background: var(--accent-green); }
 .ad-fleet__dot--grey { background: #6b7280; }
 
 .ad-fleet__legend-label {

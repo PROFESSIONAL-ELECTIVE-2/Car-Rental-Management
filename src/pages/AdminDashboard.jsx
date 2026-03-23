@@ -24,9 +24,8 @@ const formatDate = (iso) =>
 const shortDay = (dateStr) =>
     new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short' });
 
-// ── Consistent SVG icon set ───────────────────────────────────────────────────
 const Icons = {
-    // Nav
+    
     Dashboard: () => (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
@@ -61,7 +60,7 @@ const Icons = {
             <polyline points="2 17 6 14 10 17 14 12 18 10 22 10"/>
         </svg>
     ),
-    // Stat cards
+    
     Revenue: () => (
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="12" y1="1" x2="12" y2="23"/>
@@ -141,7 +140,6 @@ function StatusBadge({ status }) {
     return <span className={`ad-badge ad-badge--${status.toLowerCase()}`}>{status}</span>;
 }
 
-// StatCard now receives an Icon component instead of an emoji string
 function StatCard({ title, value, subtitle, Icon, accent, index }) {
     return (
         <div className={`ad-stat-card ad-stat-card--${accent}`} style={{ animationDelay: `${index * 0.1}s` }}>
@@ -218,7 +216,7 @@ function FleetStatus({ fleet, bookingStats }) {
                     <div className="ad-donut" style={{ background: gradient }}>
                         <div className="ad-donut__hole">
                             <span className="ad-donut__num">{fleet.rented}</span>
-                            <span className="ad-donut__lbl">Rented</span>
+                            <span className="ad-donut__lbl">Active</span>
                         </div>
                     </div>
                 </div>
@@ -398,7 +396,6 @@ function DashboardOverview({ data, loading, error, onRetry, onNav, lastRefreshed
     );
 }
 
-// ── Main shell ────────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
     const navigate = useNavigate();
 
@@ -445,7 +442,7 @@ export default function AdminDashboard() {
                     const msgs = await msgRes.json();
                     setUnreadMessages(msgs.filter(m => m.status === 'Unread').length);
                 }
-            } catch { /* non-critical */ }
+            } catch {  }
         } catch (err) {
             setError(err.message);
         } finally {
@@ -502,7 +499,7 @@ export default function AdminDashboard() {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` },
             });
-        } catch { /* ignore */ } finally {
+        } catch {  } finally {
             clearToken();
             navigate('/admin/login', { replace: true });
         }
@@ -525,7 +522,7 @@ export default function AdminDashboard() {
 
             {sidebarOpen && <div className="ad-overlay" onClick={() => setSidebarOpen(false)} />}
 
-            {/* ── Sidebar ─────────────────────────────────────────────── */}
+            
             <aside className={`ad-sidebar${sidebarOpen ? ' ad-sidebar--open' : ''}`}>
                 <div className="ad-sidebar__logo">
                     <div className="ad-sidebar__logo-icon">
@@ -585,7 +582,7 @@ export default function AdminDashboard() {
                 </div>
             </aside>
 
-            {/* ── Main content ─────────────────────────────────────────── */}
+            
             <div className="ad-main">
                 <header className="ad-header">
                     <div className="ad-header__left">

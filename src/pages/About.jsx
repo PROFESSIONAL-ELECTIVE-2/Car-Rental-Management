@@ -14,9 +14,8 @@ function About() {
                         <span className="hero-subtitle">ESTABLISHED 2014</span>
                         <h1>Our Journey at Triple R and A</h1>
                         <p>
-                            From a small local fleet to a premier rental service, we've spent 
-                            the last decade perfecting the art of the journey. We don't just 
-                            rent cars; we provide the keys to your next adventure.
+                           From a small local fleet to a premier rental service, we've spent the last decade perfecting the art of the journey.
+                         <br />We don't just rent cars; we provide the keys to your next adventure.
                         </p>
                     </div>
                 </div>

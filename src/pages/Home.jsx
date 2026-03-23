@@ -201,10 +201,10 @@ function Home() {
                             }}
                             onMouseLeave={e => {
                                 e.target.style.background = 'transparent';
-                                e.target.style.color = '#375d97';
+                                e.target.style.color = '#040505';
                             }}
                         >
-                            View Full Fleet →
+                            View Full Fleet 
                         </button>
                     </div>
                 )}

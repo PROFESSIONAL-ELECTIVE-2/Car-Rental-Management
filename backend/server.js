@@ -8,21 +8,54 @@ import nodemailer from 'nodemailer';
 import { setServers } from 'node:dns/promises';
 import Car from './models/cars.js';
 import Admin from './models/Admin.js';
-// ── Urgency microservice (Python/Flask on :5001) ─────────────────────────────
+import rateLimit from 'express-rate-limit';
+
+const loginLimiter = rateLimit({
+    windowMs:        15 * 60 * 1000,  // 15 minutes
+    max:             10,
+    message:         { message: 'Too many login attempts. Please try again in 15 minutes.' },
+    standardHeaders: true,
+    legacyHeaders:   false,
+});
+
+// Medium limiter for contact form — 5 messages per hour per IP
+const contactLimiter = rateLimit({
+    windowMs:        60 * 60 * 1000,  // 1 hour
+    max:             5,
+    message:         { message: 'Too many messages sent. Please wait before sending again.' },
+    standardHeaders: true,
+    legacyHeaders:   false,
+});
+
+// In your limiters section — add this
+const bookingLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,  // 1 hour
+    max:      10,               // 10 booking attempts per hour per IP
+    message:  { message: 'Too many booking attempts. Please try again later.' },
+    standardHeaders: true,
+    legacyHeaders:   false,
+});
+
+// General API limiter — 200 requests per 15 minutes per IP
+const generalLimiter = rateLimit({
+    windowMs:        15 * 60 * 1000,
+    max:             200,
+    message:         { message: 'Too many requests. Please slow down.' },
+    standardHeaders: true,
+    legacyHeaders:   false,
+});
+
+app.use(generalLimiter);
+
 const URGENCY_URL = process.env.URGENCY_SERVICE_URL || 'http://localhost:5001';
 
-/**
- * callClassifier(message, subject) → { urgency, score, breakdown, confidence }
- * Calls the Flask urgency microservice.  Falls back to { urgency: 'low', score: 0 }
- * if the service is unreachable so the rest of the API is never blocked.
- */
 async function callClassifier(message, subject = '') {
     try {
         const res = await fetch(`${URGENCY_URL}/classify`, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ message, subject }),
-            signal:  AbortSignal.timeout(4000),   // 4-second timeout
+            signal:  AbortSignal.timeout(4000),   
         });
         if (!res.ok) throw new Error(`Classifier HTTP ${res.status}`);
         return await res.json();
@@ -32,10 +65,6 @@ async function callClassifier(message, subject = '') {
     }
 }
 
-/**
- * callBatchReclassify(messages) → [{ _id, urgency, score, breakdown }, ...]
- * Used by the reclassify admin route.
- */
 async function callBatchReclassify(messages) {
     const res = await fetch(`${URGENCY_URL}/reclassify`, {
         method:  'POST',
@@ -58,8 +87,6 @@ app.use(express.json());
 const mongoURI   = process.env.MONGODB_URI  || 'mongodb://localhost:27017/car_rental';
 const JWT_SECRET = process.env.JWT_SECRET   || 'your_fallback_secret_key';
 const tokenBlacklist = new Set();
-
-// ─── Email transporter ────────────────────────────────────────────────
 const transporter = nodemailer.createTransport({
     service: process.env.EMAIL_SERVICE || 'gmail',
     auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
@@ -175,7 +202,6 @@ async function sendEmail(to, subject, html) {
     } catch (e) { console.error('Email error:', e.message); }
 }
 
-// ─── Schemas ──────────────────────────────────────────────────────────
 const bookingSchema = new mongoose.Schema({
     carId:          { type: mongoose.Schema.Types.ObjectId, ref:'Car', required:true },
     qty:            { type:Number, required:true, min:1, default:1 },
@@ -186,15 +212,12 @@ const bookingSchema = new mongoose.Schema({
     endDate:        { type:Date, required:true },
     rentalDays:     { type:Number, required:true, min:1 },
     pickupLocation: { type:String, trim:true },
-    // Admin-set pricing — never derived from public dailyRate
     quotedPrice:    { type:Number, default:null },
     quotedAt:       { type:Date,   default:null },
-    // Payment tracking
     paymentStatus:  { type:String, enum:['Unpaid','Partially Paid','Paid'], default:'Unpaid' },
     amountPaid:     { type:Number, default:0 },
     paymentMethod:  { type:String, enum:['Cash','GCash','Bank Transfer','Other'], default:null },
     paymentNotes:   { type:String, trim:true, default:'' },
-    // totalCost synced with quotedPrice for analytics
     totalCost:      { type:Number, default:0 },
     status:         { type:String, enum:['Pending','Active','Completed','Cancelled'], default:'Pending' },
 }, { timestamps:true });
@@ -216,7 +239,6 @@ const messageSchema = new mongoose.Schema({
     status:  { type:String, enum:['Unread','Read','Archived'], default:'Unread' },
     replies: { type:[replySchema], default:[] },
 
-    // ── Urgency classification ────────────────────────────────────────
     urgency:          { type:String, enum:['high','medium','low',null], default:null },
     urgencyScore:     { type:Number, default:null },
     urgencyBreakdown: { type:Object, default:null },
@@ -227,7 +249,6 @@ const messageSchema = new mongoose.Schema({
 
 const Message = mongoose.models.Message || mongoose.model('Message', messageSchema, 'messages');
 
-// ─── Auth middleware ──────────────────────────────────────────────────
 function requireAdmin(req, res, next) {
     const auth = req.headers.authorization;
     if (!auth?.startsWith('Bearer ')) return res.status(401).json({ message:'No token provided.' });
@@ -240,7 +261,6 @@ function requireAdmin(req, res, next) {
     } catch { return res.status(401).json({ message:'Invalid or expired token.' }); }
 }
 
-// ─── DB ───────────────────────────────────────────────────────────────
 mongoose.connect(mongoURI)
     .then(() => {
         console.log('--- Database Info ---');
@@ -251,16 +271,12 @@ mongoose.connect(mongoURI)
     })
     .catch(err => console.error('MongoDB Error:', err));
 
-// ═══════════════════════════════════════════════════════════════════════
-//  PUBLIC
-// ═══════════════════════════════════════════════════════════════════════
-
 app.get('/api/cars', async (req, res) => {
     try { res.json(await Car.find()); }
     catch { res.status(500).json({ message:'Server Error: Could not retrieve cars.' }); }
 });
 
-app.post('/api/bookings', async (req, res) => {
+app.post('/api/bookings', bookingLimiter, async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
@@ -291,7 +307,7 @@ app.post('/api/bookings', async (req, res) => {
     }
 });
 
-app.post('/api/bookings/batch', async (req, res) => {
+app.post('/api/bookings/batch', bookingLimiter, async (req, res) => {
     const { bookings } = req.body;
     if (!Array.isArray(bookings)||!bookings.length) return res.status(400).json({ message:'bookings array is required.' });
     const session = await mongoose.startSession(); session.startTransaction();
@@ -323,11 +339,10 @@ app.post('/api/bookings/batch', async (req, res) => {
     }
 });
 
-app.post('/api/messages', async (req, res) => {
+app.post('/api/messages', contactLimiter, async (req, res) => {
     try {
         const { name, email, subject, message } = req.body;
         if (!name||!email||!message) return res.status(400).json({ message:'Name, email, and message are required.' });
-        // Classify urgency immediately at creation time
         const { urgency, score, breakdown } = await callClassifier(message.trim(), subject?.trim()||'');
 
         const msg = await Message.create({
@@ -345,11 +360,7 @@ app.post('/api/messages', async (req, res) => {
     } catch (err) { console.error('Message error:', err); res.status(500).json({ message:'Server Error.' }); }
 });
 
-// ═══════════════════════════════════════════════════════════════════════
-//  ADMIN AUTH
-// ═══════════════════════════════════════════════════════════════════════
-
-app.post('/api/admin/login', async (req, res) => {
+app.post('/api/admin/login', loginLimiter,async (req, res) => {
     const { identifier, password, rememberMe } = req.body;
     try {
         const user = await Admin.findOne({ $or:[ { username:{$regex:new RegExp(`^${identifier}$`,'i')} }, { email:{$regex:new RegExp(`^${identifier}$`,'i')} } ] });
@@ -366,10 +377,6 @@ app.post('/api/admin/logout', requireAdmin, (req, res) => {
     tokenBlacklist.add(req.token);
     res.json({ message:'Logged out successfully.' });
 });
-
-// ═══════════════════════════════════════════════════════════════════════
-//  ADMIN: BOOKINGS
-// ═══════════════════════════════════════════════════════════════════════
 
 app.get('/api/bookings', requireAdmin, async (req, res) => {
     try { res.json(await Booking.find().sort({ createdAt:-1 }).populate('carId','title type image')); }
@@ -407,9 +414,6 @@ app.put('/api/admin/bookings/:id/status', requireAdmin, async (req, res) => {
     }
 });
 
-// PUT /api/admin/bookings/:id/quote
-// Body: { quotedPrice: Number, paymentNotes?: String }
-// Sets the admin-quoted price and emails the customer automatically.
 app.put('/api/admin/bookings/:id/quote', requireAdmin, async (req, res) => {
     const { quotedPrice, paymentNotes } = req.body;
     if (quotedPrice==null||isNaN(quotedPrice)||Number(quotedPrice)<=0)
@@ -418,7 +422,7 @@ app.put('/api/admin/bookings/:id/quote', requireAdmin, async (req, res) => {
         const booking = await Booking.findByIdAndUpdate(req.params.id, {
             quotedPrice:  Number(quotedPrice),
             quotedAt:     new Date(),
-            totalCost:    Number(quotedPrice),   // keeps analytics in sync
+            totalCost:    Number(quotedPrice),   
             paymentNotes: paymentNotes?.trim()||'',
         }, { new:true }).populate('carId','title type image');
         if (!booking) return res.status(404).json({ message:'Booking not found.' });
@@ -431,9 +435,6 @@ app.put('/api/admin/bookings/:id/quote', requireAdmin, async (req, res) => {
     } catch (err) { console.error('Quote error:', err); res.status(500).json({ message:'Server Error.' }); }
 });
 
-// PUT /api/admin/bookings/:id/payment
-// Body: { amountPaid: Number, paymentMethod?: String, paymentNotes?: String }
-// Derives paymentStatus automatically: Unpaid / Partially Paid / Paid
 app.put('/api/admin/bookings/:id/payment', requireAdmin, async (req, res) => {
     const { amountPaid, paymentMethod, paymentNotes } = req.body;
     if (amountPaid==null||isNaN(amountPaid)||Number(amountPaid)<0)
@@ -455,12 +456,6 @@ app.put('/api/admin/bookings/:id/payment', requireAdmin, async (req, res) => {
     } catch (err) { console.error('Payment error:', err); res.status(500).json({ message:'Server Error.' }); }
 });
 
-// DELETE /api/admin/bookings/:id
-// Deletes the booking.
-// Stock restoration rules:
-//   Pending  → restore stock (booking was holding units, never activated)
-//   Active   → restore stock (vehicle is still out, admin decision to force-delete)
-//   Completed / Cancelled → no stock change (stock was already restored when status was set)
 app.delete('/api/admin/bookings/:id', requireAdmin, async (req, res) => {
     const RESTORE_STATUSES = ['Pending', 'Active'];
     const session = await mongoose.startSession();
@@ -472,7 +467,6 @@ app.delete('/api/admin/bookings/:id', requireAdmin, async (req, res) => {
             return res.status(404).json({ message: 'Booking not found.' });
         }
 
-        // Restore stock only for statuses that still hold inventory
         if (RESTORE_STATUSES.includes(booking.status)) {
             const car = await Car.findById(booking.carId).session(session);
             if (car) {
@@ -494,10 +488,6 @@ app.delete('/api/admin/bookings/:id', requireAdmin, async (req, res) => {
         res.status(500).json({ message: 'Server Error: Could not delete booking.' });
     }
 });
-
-// ═══════════════════════════════════════════════════════════════════════
-//  ADMIN: FLEET
-// ═══════════════════════════════════════════════════════════════════════
 
 app.get('/api/admin/cars', requireAdmin, async (req, res) => {
     try { res.json(await Car.find().sort({ createdAt:-1 })); }
@@ -539,19 +529,13 @@ app.delete('/api/admin/cars/:id', requireAdmin, async (req, res) => {
     } catch (err) { console.error(err); res.status(500).json({ message:'Server Error.' }); }
 });
 
-// ═══════════════════════════════════════════════════════════════════════
-//  ADMIN: DASHBOARD ANALYTICS
-// ═══════════════════════════════════════════════════════════════════════
-
 app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
     try {
-        // Completed revenue
         const [{ total: totalRevenue } = { total:0 }] = await Booking.aggregate([
             { $match:{ status:'Completed' } },
             { $group:{ _id:null, total:{ $sum:'$totalCost' } } },
         ]);
 
-        // 7-day chart
         const ago7 = new Date(); ago7.setDate(ago7.getDate()-7); ago7.setHours(0,0,0,0);
         const daily = await Booking.aggregate([
             { $match:{ status:'Completed', updatedAt:{ $gte:ago7 } } },
@@ -564,7 +548,6 @@ app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
             return { date:ds, revenue:daily.find(r=>r._id===ds)?.revenue??0 };
         });
 
-        // Payment pipeline
         const pAgg = await Booking.aggregate([
             { $match:{ status:{ $ne:'Cancelled' }, quotedPrice:{ $gt:0 } } },
             { $group:{ _id:'$paymentStatus', totalQuoted:{ $sum:'$quotedPrice' }, totalCollected:{ $sum:'$amountPaid' }, count:{ $sum:1 } } },
@@ -577,7 +560,6 @@ app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
         }
         pipeline.total = pipeline.confirmed + pipeline.partial + pipeline.outstanding;
 
-        // Avg quote by vehicle type
         const avgByType = await Booking.aggregate([
             { $match:{ quotedPrice:{ $gt:0 } } },
             { $lookup:{ from:'cars', localField:'carId', foreignField:'_id', as:'car' } },
@@ -586,7 +568,6 @@ app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
             { $sort:{ avgPrice:-1 } },
         ]);
 
-        // Upcoming scheduled revenue (next 30 days)
         const now = new Date(), out30 = new Date(); out30.setDate(now.getDate()+30);
         const upcoming = await Booking.aggregate([
             { $match:{ status:{ $in:['Pending','Active'] }, quotedPrice:{ $gt:0 }, startDate:{ $gte:now, $lte:out30 } } },
@@ -594,12 +575,29 @@ app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
             { $sort:{ '_id.year':1, '_id.week':1 } },
         ]);
 
-        // Fleet
-        const fAgg = await Car.aggregate([{ $group:{ _id:'$status', count:{ $sum:1 } } }]);
-        const fMap = fAgg.reduce((a,x)=>{ a[x._id]=x.count; return a; }, {});
-        const fleet = { total:await Car.countDocuments(), available:fMap['Available']??0, rented:fMap['Rented']??0, maintenance:fMap['Maintenance']??0 };
+       // Fleet stats — derive rented from active bookings, not a missing Car.status field
+const totalCars = await Car.countDocuments();
 
-        // Recent 5 bookings
+// Count how many car units are currently tied up in Active bookings
+const activeBookingAgg = await Booking.aggregate([
+    { $match: { status: 'Active' } },
+    { $group: { _id: null, totalRented: { $sum: { $ifNull: ['$qty', 1] } } } },
+]);
+const totalRented = activeBookingAgg[0]?.totalRented ?? 0;
+
+// Count total stock across all cars as "available" proxy
+const stockAgg = await Car.aggregate([
+    { $group: { _id: null, totalStock: { $sum: '$stock' } } },
+]);
+const totalStock = stockAgg[0]?.totalStock ?? 0;
+
+const fleet = {
+    total:       totalCars,
+    rented:      totalRented,
+    available:   totalStock,   // current available units across all cars
+    maintenance: 0,            // no maintenance tracking in schema yet
+};
+
         const recent = await Booking.find().sort({ createdAt:-1 }).limit(5).populate('carId','title type licensePlate').lean();
         const recentBookings = recent.map(b => ({
             id:b._id, customerName:b.customerName, customerEmail:b.customerEmail||'N/A',
@@ -609,7 +607,6 @@ app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
             status:b.status, createdAt:b.createdAt,
         }));
 
-        // Booking stats by status
         const sAgg = await Booking.aggregate([{ $group:{ _id:'$status', count:{ $sum:1 } } }]);
         const bookingStats = sAgg.reduce((a,x)=>{ a[x._id.toLowerCase()]=x.count; return a; }, { pending:0, active:0, completed:0, cancelled:0 });
 
@@ -619,10 +616,6 @@ app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
         res.status(500).json({ success:false, message:'Server Error: Could not load analytics.' });
     }
 });
-
-// ═══════════════════════════════════════════════════════════════════════
-//  ADMIN: MESSAGES
-// ═══════════════════════════════════════════════════════════════════════
 
 app.get('/api/admin/messages', requireAdmin, async (req, res) => {
     try { res.json(await Message.find().sort({ createdAt:-1 })); }
@@ -664,10 +657,6 @@ app.post('/api/admin/messages/:id/reply', requireAdmin, async (req, res) => {
     } catch (err) { console.error('Reply error:', err); res.status(500).json({ message:'Server Error.' }); }
 });
 
-// PUT /api/admin/messages/:id/urgency
-// Admin corrects the urgency classification.
-// Body: { urgency: 'high'|'medium'|'low' }
-// Saves the correction as urgencyCorrected so it can seed future training.
 app.put('/api/admin/messages/:id/urgency', requireAdmin, async (req, res) => {
     const { urgency } = req.body;
     if (!['high','medium','low'].includes(urgency))
@@ -678,7 +667,7 @@ app.put('/api/admin/messages/:id/urgency', requireAdmin, async (req, res) => {
             {
                 urgency,
                 urgencyConfirmed:  true,
-                urgencyCorrected:  urgency,  // stores the human label for future ML training
+                urgencyCorrected:  urgency,  
             },
             { new: true }
         );
@@ -691,13 +680,9 @@ app.put('/api/admin/messages/:id/urgency', requireAdmin, async (req, res) => {
     }
 });
 
-// POST /api/admin/messages/reclassify
-// Re-runs the classifier on all messages that have never been manually confirmed.
-// Useful after updating keyword lists.
 app.post('/api/admin/messages/reclassify', requireAdmin, async (req, res) => {
     try {
         const dbMessages = await Message.find({ urgencyConfirmed: { $ne: true } });
-        // Send all unconfirmed messages to Python service in one batch call
         const results = await callBatchReclassify(
             dbMessages.map(m => ({ _id: String(m._id), message: m.message, subject: m.subject || '' }))
         );
@@ -721,12 +706,9 @@ app.post('/api/admin/messages/reclassify', requireAdmin, async (req, res) => {
     }
 });
 
-// GET /api/admin/messages/urgency-report
-// Returns urgency distribution counts — used by the MessagesPage summary bar.
 app.get('/api/admin/messages/urgency-report', requireAdmin, async (req, res) => {
     try {
         const msgs = await Message.find({}, 'urgency status');
-        // Build report locally — no need to call Python for simple counting
         const report = msgs.reduce((acc, m) => {
             const urg = m.urgency || 'unclassified';
             acc.total++;
@@ -742,7 +724,185 @@ app.get('/api/admin/messages/urgency-report', requireAdmin, async (req, res) => 
 });
 
 // ═══════════════════════════════════════════════════════════════════════
-//  START
+//  SEASONAL DEMAND FORECASTING
 // ═══════════════════════════════════════════════════════════════════════
+
+// GET /api/dashboard/seasonal
+// Returns month-by-month seasonality index, inventory recommendations,
+// and dynamic pricing suggestions derived from historical booking data.
+app.get('/api/dashboard/seasonal', requireAdmin, async (req, res) => {
+    try {
+        // ── 1. Monthly booking volume (all time) ─────────────────────
+        const monthlyVolume = await Booking.aggregate([
+            { $match: { status: { $ne: 'Cancelled' } } },
+            {
+                $group: {
+                    _id: {
+                        year:  { $year:  '$startDate' },
+                        month: { $month: '$startDate' },
+                    },
+                    bookings:   { $sum: 1 },
+                    revenue:    { $sum: '$totalCost' },
+                    totalQty:   { $sum: { $ifNull: ['$qty', 1] } },
+                },
+            },
+            { $sort: { '_id.year': 1, '_id.month': 1 } },
+        ]);
+
+        // ── 2. Seasonality index per calendar month (1–12) ───────────
+        // Average bookings per month number across all years,
+        // then normalise so the average index = 1.0
+        const byMonth = Array.from({ length: 12 }, (_, i) => ({
+            month: i + 1, totalBookings: 0, totalRevenue: 0, years: 0,
+        }));
+
+        for (const row of monthlyVolume) {
+            const m = byMonth[row._id.month - 1];
+            m.totalBookings += row.bookings;
+            m.totalRevenue  += row.revenue;
+            m.years         += 1;
+        }
+
+        const avgBookingsPerMonth = byMonth.reduce((s, m) => s + m.totalBookings, 0) / 12 || 1;
+
+        const seasonality = byMonth.map(m => {
+            const avgBookings  = m.years > 0 ? m.totalBookings / m.years : 0;
+            const index        = avgBookings / avgBookingsPerMonth;   // 1.0 = average
+            const avgRevenue   = m.years > 0 ? m.totalRevenue  / m.years : 0;
+            return {
+                month:        m.month,
+                monthName:    new Date(2000, m.month - 1).toLocaleString('en', { month: 'long' }),
+                avgBookings:  Math.round(avgBookings * 10) / 10,
+                avgRevenue:   Math.round(avgRevenue),
+                index:        Math.round(index * 100) / 100,
+                tier:         index >= 1.3 ? 'peak'
+                            : index >= 0.9 ? 'normal'
+                            : 'low',
+                // Suggested price multiplier: peak +20%, low -10%, normal flat
+                pricingMultiplier: index >= 1.3 ? 1.20
+                                 : index >= 0.9 ? 1.00
+                                 : 0.90,
+            };
+        });
+
+        // ── 3. Upcoming 6-month outlook ───────────────────────────────
+        const now = new Date();
+        const outlook = Array.from({ length: 6 }, (_, i) => {
+            const d    = new Date(now.getFullYear(), now.getMonth() + i, 1);
+            const mon  = d.getMonth() + 1;
+            const seas = seasonality[mon - 1];
+            return {
+                year:             d.getFullYear(),
+                month:            mon,
+                monthName:        seas.monthName,
+                index:            seas.index,
+                tier:             seas.tier,
+                pricingMultiplier: seas.pricingMultiplier,
+                label:            `${seas.monthName} ${d.getFullYear()}`,
+            };
+        });
+
+        // ── 4. Vehicle-type demand breakdown ─────────────────────────
+        const typeDemand = await Booking.aggregate([
+            { $match: { status: { $ne: 'Cancelled' } } },
+            { $lookup: { from: 'cars', localField: 'carId', foreignField: '_id', as: 'car' } },
+            { $unwind: '$car' },
+            {
+                $group: {
+                    _id:          '$car.type',
+                    totalBookings: { $sum: 1 },
+                    totalQty:      { $sum: { $ifNull: ['$qty', 1] } },
+                    avgRevenue:    { $avg: '$totalCost' },
+                    peakMonth: {
+                        $push: { $month: '$startDate' }
+                    },
+                },
+            },
+            { $sort: { totalBookings: -1 } },
+        ]);
+
+        // ── 5. Inventory recommendations ─────────────────────────────
+        // For each car type, compare current stock vs. projected demand
+        // in the next peak month.
+        const currentStock = await Car.aggregate([
+            { $group: { _id: '$type', totalStock: { $sum: '$stock' }, carCount: { $sum: 1 } } },
+        ]);
+        const stockMap = currentStock.reduce((a, s) => { a[s._id] = s; return a; }, {});
+
+        // Find the next peak month in the outlook
+        const nextPeak = outlook.find(o => o.tier === 'peak') || outlook[0];
+        const peakMultiplier = nextPeak.index || 1;
+
+        const inventoryRecs = typeDemand.map(type => {
+            const stock = stockMap[type._id] || { totalStock: 0, carCount: 0 };
+            // Projected bookings in peak month = avgMonthly * peakMultiplier
+            const avgMonthly     = type.totalBookings / Math.max(monthlyVolume.length, 1);
+            const peakProjection = Math.ceil(avgMonthly * peakMultiplier);
+            const currentAvail   = stock.totalStock;
+            const gap            = peakProjection - currentAvail;
+            return {
+                type:              type._id,
+                currentStock:      currentAvail,
+                totalBookings:     type.totalBookings,
+                avgMonthlyDemand:  Math.round(avgMonthly * 10) / 10,
+                peakProjection,
+                recommendedStock:  Math.max(peakProjection, 1),
+                stockGap:          gap,               // positive = need more, negative = surplus
+                status:            gap > 0  ? 'understocked'
+                                 : gap < -2 ? 'overstocked'
+                                 : 'optimal',
+                avgRevenue:        Math.round(type.avgRevenue),
+            };
+        });
+
+        // ── 6. Year-over-year growth ──────────────────────────────────
+        const yearAgg = await Booking.aggregate([
+            { $match: { status: { $ne: 'Cancelled' } } },
+            {
+                $group: {
+                    _id:      { $year: '$startDate' },
+                    bookings: { $sum: 1 },
+                    revenue:  { $sum: '$totalCost' },
+                },
+            },
+            { $sort: { _id: 1 } },
+        ]);
+
+        const yoyGrowth = yearAgg.map((y, i) => ({
+            year:           y._id,
+            bookings:       y.bookings,
+            revenue:        y.revenue,
+            bookingGrowth:  i > 0
+                ? Math.round(((y.bookings - yearAgg[i - 1].bookings) / yearAgg[i - 1].bookings) * 100)
+                : null,
+            revenueGrowth:  i > 0
+                ? Math.round(((y.revenue  - yearAgg[i - 1].revenue)  / yearAgg[i - 1].revenue)  * 100)
+                : null,
+        }));
+
+        res.json({
+            success: true,
+            data: {
+                seasonality,   // 12 months, index + pricing multiplier
+                outlook,       // next 6 months forecast
+                inventoryRecs, // per vehicle type stock recommendations
+                typeDemand,    // raw demand by vehicle type
+                yoyGrowth,     // year-over-year trend
+                nextPeak,      // the soonest peak month
+                dataQuality: {
+                    totalHistoricalMonths: monthlyVolume.length,
+                    hasEnoughData:        monthlyVolume.length >= 3,
+                    message:              monthlyVolume.length < 3
+                        ? 'Add more completed bookings across multiple months for accurate seasonal patterns.'
+                        : `Based on ${monthlyVolume.length} months of booking history.`,
+                },
+            },
+        });
+    } catch (err) {
+        console.error('Seasonal analytics error:', err);
+        res.status(500).json({ success: false, message: 'Server Error.' });
+    }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -6,8 +6,8 @@ import MessagesPage from './Messagespage.jsx';
 import ForecastingPage from './ForecastingPage.jsx';
 import './AdminDashboard.css';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-const POLL_INTERVAL = 30_000; 
+const API_BASE_URL  = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const POLL_INTERVAL = 30_000;
 
 function getToken() {
     return localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
@@ -24,41 +24,130 @@ const formatDate = (iso) =>
 const shortDay = (dateStr) =>
     new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short' });
 
-const NAV_LINKS = [
-    {
-        id: 'dashboard', label: 'Dashboard',
-        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
-    },
-    {
-        id: 'fleet', label: 'Fleet',
-        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>,
-    },
-    {
-        id: 'bookings', label: 'Bookings',
-        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
-    },
-    {
-        id: 'messages', label: 'Messages',
-        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,
-    },
-    {
-        id: 'forecasting', label: 'Forecasting',
-        icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
-            <line x1="6" y1="20" x2="6" y2="14"/>
+// ── Consistent SVG icon set ───────────────────────────────────────────────────
+const Icons = {
+    // Nav
+    Dashboard: () => (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        </svg>
+    ),
+    Fleet: () => (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="1" y="3" width="15" height="13" rx="2"/>
+            <path d="M16 8h4l3 5v3h-7V8z"/>
+            <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+        </svg>
+    ),
+    Bookings: () => (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+    ),
+    Messages: () => (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+        </svg>
+    ),
+    Forecasting: () => (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"/>
+            <line x1="12" y1="20" x2="12" y2="4"/>
+            <line x1="6"  y1="20" x2="6"  y2="14"/>
             <polyline points="2 17 6 14 10 17 14 12 18 10 22 10"/>
-        </svg>,
-    },
+        </svg>
+    ),
+    // Stat cards
+    Revenue: () => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="1" x2="12" y2="23"/>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+    ),
+    Car: () => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="1" y="3" width="15" height="13" rx="2"/>
+            <path d="M16 8h4l3 5v3h-7V8z"/>
+            <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+        </svg>
+    ),
+    Garage: () => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+    ),
+    // Utilities
+    Warning: () => (
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9"  x2="12"   y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+    ),
+    Bell: () => (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+    ),
+    Refresh: () => (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="23 4 23 10 17 10"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+        </svg>
+    ),
+    Settings: () => (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+        </svg>
+    ),
+    Logout: () => (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+    ),
+    Spinner: () => (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            style={{ animation: 'ad-spin 0.8s linear infinite' }}>
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+        </svg>
+    ),
+    LogoVehicle: () => (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="1" y="3" width="15" height="13" rx="2"/>
+            <path d="M16 8h4l3 5v3h-7V8z"/>
+            <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+        </svg>
+    ),
+};
+
+const NAV_LINKS = [
+    { id: 'dashboard',   label: 'Dashboard',  Icon: Icons.Dashboard   },
+    { id: 'fleet',       label: 'Fleet',       Icon: Icons.Fleet       },
+    { id: 'bookings',    label: 'Bookings',    Icon: Icons.Bookings    },
+    { id: 'messages',    label: 'Messages',    Icon: Icons.Messages    },
+    { id: 'forecasting', label: 'Forecasting', Icon: Icons.Forecasting },
 ];
 
 function StatusBadge({ status }) {
     return <span className={`ad-badge ad-badge--${status.toLowerCase()}`}>{status}</span>;
 }
 
-function StatCard({ title, value, subtitle, icon, accent, index }) {
+// StatCard now receives an Icon component instead of an emoji string
+function StatCard({ title, value, subtitle, Icon, accent, index }) {
     return (
         <div className={`ad-stat-card ad-stat-card--${accent}`} style={{ animationDelay: `${index * 0.1}s` }}>
-            <div className="ad-stat-card__icon">{icon}</div>
+            <div className="ad-stat-card__icon">
+                <Icon />
+            </div>
             <div className="ad-stat-card__body">
                 <p className="ad-stat-card__title">{title}</p>
                 <p className="ad-stat-card__value">{value}</p>
@@ -70,7 +159,7 @@ function StatCard({ title, value, subtitle, icon, accent, index }) {
 }
 
 function RevenueChart({ data }) {
-    const max = Math.max(...data.map(d => d.revenue), 1);
+    const max       = Math.max(...data.map(d => d.revenue), 1);
     const weekTotal = data.reduce((s, d) => s + d.revenue, 0);
     return (
         <div className="ad-chart">
@@ -83,14 +172,16 @@ function RevenueChart({ data }) {
             </div>
             <div className="ad-chart__bars">
                 {data.map((day, i) => {
-                    const pct = (day.revenue / max) * 100;
+                    const pct    = (day.revenue / max) * 100;
                     const isLast = i === data.length - 1;
                     return (
                         <div key={day.date} className="ad-chart__col">
                             <div className="ad-chart__bar-wrap">
                                 <div className="ad-chart__tooltip">{formatCurrency(day.revenue)}</div>
-                                <div className={`ad-chart__bar${isLast ? ' ad-chart__bar--today' : ''}`}
-                                    style={{ height: `${Math.max(pct, 4)}%` }} />
+                                <div
+                                    className={`ad-chart__bar${isLast ? ' ad-chart__bar--today' : ''}`}
+                                    style={{ height: `${Math.max(pct, 4)}%` }}
+                                />
                             </div>
                             <span className={`ad-chart__label${isLast ? ' ad-chart__label--today' : ''}`}>
                                 {shortDay(day.date)}
@@ -109,8 +200,8 @@ function RevenueChart({ data }) {
 
 function FleetStatus({ fleet, bookingStats }) {
     if (!fleet.total) return null;
-    const avPct   = (fleet.available / fleet.total) * 100;
-    const rentPct = (fleet.rented    / fleet.total) * 100;
+    const avPct    = (fleet.available / fleet.total) * 100;
+    const rentPct  = (fleet.rented    / fleet.total) * 100;
     const gradient = `conic-gradient(
         var(--accent-gold) 0% ${avPct}%,
         var(--primary-blue) ${avPct}% ${avPct + rentPct}%,
@@ -159,9 +250,12 @@ function FleetStatus({ fleet, bookingStats }) {
 function Skeleton() {
     return (
         <div className="ad-skeleton">
-            <div className="ad-skeleton__row">{[1,2,3].map(i => <div key={i} className="ad-skeleton__card" />)}</div>
+            <div className="ad-skeleton__row">
+                {[1, 2, 3].map(i => <div key={i} className="ad-skeleton__card" />)}
+            </div>
             <div className="ad-skeleton__row ad-skeleton__row--two">
-                <div className="ad-skeleton__block" /><div className="ad-skeleton__block" />
+                <div className="ad-skeleton__block" />
+                <div className="ad-skeleton__block" />
             </div>
             <div className="ad-skeleton__block ad-skeleton__block--tall" />
         </div>
@@ -169,22 +263,46 @@ function Skeleton() {
 }
 
 function DashboardOverview({ data, loading, error, onRetry, onNav, lastRefreshed, isPolling }) {
-    
     if (loading && !data) return <Skeleton />;
+
     if (error && !data) return (
         <div className="ad-error">
-            <span className="ad-error__icon">⚠️</span>
+            <span className="ad-error__icon" style={{ color: '#f59e0b' }}>
+                <Icons.Warning />
+            </span>
             <h3>Failed to load dashboard</h3>
             <p>{error}</p>
             <button className="ad-error__btn" onClick={onRetry}>Retry</button>
         </div>
     );
+
     if (!data) return null;
 
     const stats = [
-        { title: 'Total Revenue',  value: formatCurrency(data.revenue.total), subtitle: 'From completed bookings', icon: '💰', accent: 'gold', index: 0 },
-        { title: 'Active Rentals', value: data.fleet.rented, subtitle: `${data.fleet.available} available`, icon: '🚗', accent: 'blue', index: 1 },
-        { title: 'Total Fleet',    value: data.fleet.total, subtitle: `${data.fleet.maintenance} in maintenance`, icon: '🏎️', accent: 'dark', index: 2 },
+        {
+            title:    'Total Revenue',
+            value:    formatCurrency(data.revenue.total),
+            subtitle: 'From completed bookings',
+            Icon:     Icons.Revenue,
+            accent:   'gold',
+            index:    0,
+        },
+        {
+            title:    'Active Rentals',
+            value:    data.fleet.rented,
+            subtitle: `${data.fleet.available} available`,
+            Icon:     Icons.Car,
+            accent:   'blue',
+            index:    1,
+        },
+        {
+            title:    'Total Fleet',
+            value:    data.fleet.total,
+            subtitle: `Varieties of Vehicles`,
+            Icon:     Icons.Garage,
+            accent:   'dark',
+            index:    2,
+        },
     ];
 
     return (
@@ -219,9 +337,7 @@ function DashboardOverview({ data, loading, error, onRetry, onNav, lastRefreshed
                                     animation: 'ad-pulse 2s infinite',
                                     display: 'inline-block',
                                 }} />
-                                <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>
-                                    Live
-                                </span>
+                                <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>Live</span>
                             </div>
                         )}
                         {lastRefreshed && (
@@ -237,11 +353,19 @@ function DashboardOverview({ data, loading, error, onRetry, onNav, lastRefreshed
                 <div className="ad-table-wrap">
                     <table className="ad-table">
                         <thead>
-                            <tr>{['Customer','Vehicle','Rental Period','Cost','Status','Booked'].map(h => <th key={h}>{h}</th>)}</tr>
+                            <tr>
+                                {['Customer', 'Vehicle', 'Rental Period', 'Cost', 'Status', 'Booked'].map(h => (
+                                    <th key={h}>{h}</th>
+                                ))}
+                            </tr>
                         </thead>
                         <tbody>
                             {data.recentBookings.length === 0 ? (
-                                <tr><td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: '#9ca3af' }}>No bookings yet.</td></tr>
+                                <tr>
+                                    <td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: '#9ca3af' }}>
+                                        No bookings yet.
+                                    </td>
+                                </tr>
                             ) : data.recentBookings.map((b, i) => (
                                 <tr key={b.id} style={{ animationDelay: `${i * 0.07}s` }}>
                                     <td>
@@ -274,18 +398,20 @@ function DashboardOverview({ data, loading, error, onRetry, onNav, lastRefreshed
     );
 }
 
+// ── Main shell ────────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
     const navigate = useNavigate();
-    const [data, setData]                     = useState(null);
-    const [loading, setLoading]               = useState(true);
-    const [error, setError]                   = useState(null);
-    const [activeNav, setActiveNav]           = useState('dashboard');
-    const [sidebarOpen, setSidebarOpen]       = useState(false);
-    const [notifOpen, setNotifOpen]           = useState(false);
-    const [loggingOut, setLoggingOut]         = useState(false);
+
+    const [data,           setData]           = useState(null);
+    const [loading,        setLoading]        = useState(true);
+    const [error,          setError]          = useState(null);
+    const [activeNav,      setActiveNav]      = useState('dashboard');
+    const [sidebarOpen,    setSidebarOpen]    = useState(false);
+    const [notifOpen,      setNotifOpen]      = useState(false);
+    const [loggingOut,     setLoggingOut]     = useState(false);
     const [unreadMessages, setUnreadMessages] = useState(0);
-    const [lastRefreshed, setLastRefreshed]   = useState(null);
-    const [isPolling, setIsPolling]           = useState(false);
+    const [lastRefreshed,  setLastRefreshed]  = useState(null);
+    const [isPolling,      setIsPolling]      = useState(false);
 
     const pollTimerRef = useRef(null);
     const dataRef      = useRef(data);
@@ -311,7 +437,6 @@ export default function AdminDashboard() {
             setLastRefreshed(
                 new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
             );
-
             try {
                 const msgRes = await fetch(`${API_BASE_URL}/api/admin/messages`, {
                     headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -320,8 +445,7 @@ export default function AdminDashboard() {
                     const msgs = await msgRes.json();
                     setUnreadMessages(msgs.filter(m => m.status === 'Unread').length);
                 }
-            } catch {  }
-
+            } catch { /* non-critical */ }
         } catch (err) {
             setError(err.message);
         } finally {
@@ -337,39 +461,26 @@ export default function AdminDashboard() {
     }, []);
 
     const stopPolling = useCallback(() => {
-        if (pollTimerRef.current) {
-            clearInterval(pollTimerRef.current);
-            pollTimerRef.current = null;
-        }
+        if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null; }
         setIsPolling(false);
     }, []);
 
     const startPolling = useCallback(() => {
-        if (pollTimerRef.current) return; 
+        if (pollTimerRef.current) return;
         pollTimerRef.current = setInterval(() => {
-            if (shouldPoll()) {
-                fetchData(true); 
-            } else {
-                stopPolling();   
-            }
+            if (shouldPoll()) { fetchData(true); } else { stopPolling(); }
         }, POLL_INTERVAL);
         setIsPolling(true);
     }, [fetchData, shouldPoll, stopPolling]);
 
     useEffect(() => {
-        if (shouldPoll()) {
-            startPolling();
-        } else {
-            stopPolling();
-        }
+        if (shouldPoll()) { startPolling(); } else { stopPolling(); }
         return () => stopPolling();
     }, [data?.bookingStats?.active, data?.bookingStats?.pending]);
 
     useEffect(() => {
         const onVisible = () => {
-            if (document.visibilityState === 'visible' && shouldPoll()) {
-                fetchData(true);
-            }
+            if (document.visibilityState === 'visible' && shouldPoll()) fetchData(true);
         };
         document.addEventListener('visibilitychange', onVisible);
         return () => document.removeEventListener('visibilitychange', onVisible);
@@ -391,16 +502,13 @@ export default function AdminDashboard() {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` },
             });
-        } catch {  } finally {
+        } catch { /* ignore */ } finally {
             clearToken();
             navigate('/admin/login', { replace: true });
         }
     };
 
-    function navTo(id) {
-        setActiveNav(id);
-        setSidebarOpen(false);
-    }
+    function navTo(id) { setActiveNav(id); setSidebarOpen(false); }
 
     const pendingCount = data?.bookingStats.pending ?? 0;
 
@@ -417,13 +525,11 @@ export default function AdminDashboard() {
 
             {sidebarOpen && <div className="ad-overlay" onClick={() => setSidebarOpen(false)} />}
 
+            {/* ── Sidebar ─────────────────────────────────────────────── */}
             <aside className={`ad-sidebar${sidebarOpen ? ' ad-sidebar--open' : ''}`}>
                 <div className="ad-sidebar__logo">
                     <div className="ad-sidebar__logo-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/>
-                            <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
-                        </svg>
+                        <Icons.LogoVehicle />
                     </div>
                     <div>
                         <p className="ad-sidebar__brand">Triple R &amp; A</p>
@@ -433,20 +539,21 @@ export default function AdminDashboard() {
 
                 <nav className="ad-sidebar__nav">
                     <p className="ad-sidebar__nav-label">Main Menu</p>
-                    {NAV_LINKS.map(link => (
-                        <button key={link.id}
-                            className={`ad-nav-btn${activeNav === link.id ? ' ad-nav-btn--active' : ''}`}
-                            onClick={() => navTo(link.id)}>
-                            <span className="ad-nav-btn__icon">{link.icon}</span>
-                            {link.label}
-                            {link.id === 'bookings' && pendingCount > 0 && (
-                                <span className="ad-nav-btn__badge">{pendingCount}</span>
-                            )}
-                            {link.id === 'messages' && unreadMessages > 0 && (
-                                <span className="ad-nav-btn__badge">{unreadMessages}</span>
-                            )}
-                        </button>
-                    ))}
+                    {NAV_LINKS.map(link => {
+                        const NavIcon = link.Icon;
+                        return (
+                            <button
+                                key={link.id}
+                                className={`ad-nav-btn${activeNav === link.id ? ' ad-nav-btn--active' : ''}`}
+                                onClick={() => navTo(link.id)}
+                            >
+                                <span className="ad-nav-btn__icon"><NavIcon /></span>
+                                {link.label}
+                                {link.id === 'bookings'  && pendingCount    > 0 && <span className="ad-nav-btn__badge">{pendingCount}</span>}
+                                {link.id === 'messages'  && unreadMessages  > 0 && <span className="ad-nav-btn__badge">{unreadMessages}</span>}
+                            </button>
+                        );
+                    })}
                 </nav>
 
                 {data && (
@@ -467,30 +574,18 @@ export default function AdminDashboard() {
                 )}
 
                 <div className="ad-sidebar__footer">
-                    <button className="ad-sidebar__footer-btn">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
-                        </svg>
-                        Settings
-                    </button>
-                    <button className="ad-sidebar__footer-btn ad-sidebar__footer-btn--logout"
-                        onClick={handleLogout} disabled={loggingOut}>
-                        {loggingOut ? (
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                                style={{ animation: 'ad-spin 0.8s linear infinite' }}>
-                                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-                            </svg>
-                        ) : (
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                                <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-                            </svg>
-                        )}
+                    <button
+                        className="ad-sidebar__footer-btn ad-sidebar__footer-btn--logout"
+                        onClick={handleLogout}
+                        disabled={loggingOut}
+                    >
+                        {loggingOut ? <Icons.Spinner /> : <Icons.Logout />}
                         {loggingOut ? 'Logging out…' : 'Logout'}
                     </button>
                 </div>
             </aside>
 
+            {/* ── Main content ─────────────────────────────────────────── */}
             <div className="ad-main">
                 <header className="ad-header">
                     <div className="ad-header__left">
@@ -498,35 +593,42 @@ export default function AdminDashboard() {
                             <span /><span /><span />
                         </button>
                         <div>
-                            <h1 className="ad-header__title">{NAV_LINKS.find(n => n.id === activeNav)?.label}</h1>
+                            <h1 className="ad-header__title">
+                                {NAV_LINKS.find(n => n.id === activeNav)?.label}
+                            </h1>
                             <p className="ad-header__date">
-                                {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                {new Date().toLocaleDateString('en-US', {
+                                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                                })}
                             </p>
                         </div>
                     </div>
+
                     <div className="ad-header__right">
                         {activeNav === 'dashboard' && (
                             <>
                                 <div className="ad-notif-wrap">
                                     <button className="ad-notif-btn" onClick={() => setNotifOpen(v => !v)}>
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                                            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                                        </svg>
-                                        {pendingCount > 0 && <span className="ad-notif-dot">{pendingCount}</span>}
+                                        <Icons.Bell />
+                                        {pendingCount > 0 && (
+                                            <span className="ad-notif-dot">{pendingCount}</span>
+                                        )}
                                     </button>
                                     {notifOpen && (
                                         <div className="ad-notif-dropdown">
                                             <p className="ad-notif-dropdown__title">Pending Bookings</p>
-                                            {data?.recentBookings.filter(b => b.status === 'Pending').slice(0, 3).map(b => (
-                                                <div key={b.id} className="ad-notif-item">
-                                                    <span className="ad-notif-item__dot" />
-                                                    <div>
-                                                        <p className="ad-notif-item__name">{b.customerName}</p>
-                                                        <p className="ad-notif-item__car">{b.car} — Pending approval</p>
+                                            {data?.recentBookings
+                                                .filter(b => b.status === 'Pending')
+                                                .slice(0, 3)
+                                                .map(b => (
+                                                    <div key={b.id} className="ad-notif-item">
+                                                        <span className="ad-notif-item__dot" />
+                                                        <div>
+                                                            <p className="ad-notif-item__name">{b.customerName}</p>
+                                                            <p className="ad-notif-item__car">{b.car} — Pending approval</p>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                ))}
                                             {(!data || data.recentBookings.filter(b => b.status === 'Pending').length === 0) && (
                                                 <p className="ad-notif-empty">No pending bookings</p>
                                             )}
@@ -534,10 +636,7 @@ export default function AdminDashboard() {
                                     )}
                                 </div>
                                 <button className="ad-refresh-btn" onClick={() => fetchData(false)} title="Refresh">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                        <polyline points="23 4 23 10 17 10"/>
-                                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-                                    </svg>
+                                    <Icons.Refresh />
                                 </button>
                             </>
                         )}
@@ -552,7 +651,7 @@ export default function AdminDashboard() {
                 </header>
 
                 <main className="ad-body">
-                    {activeNav === 'dashboard' && (
+                    {activeNav === 'dashboard'   && (
                         <DashboardOverview
                             data={data}
                             loading={loading}
@@ -563,9 +662,9 @@ export default function AdminDashboard() {
                             isPolling={isPolling}
                         />
                     )}
-                    {activeNav === 'fleet'      && <FleetPage />}
-                    {activeNav === 'bookings'   && <BookingsPage />}
-                    {activeNav === 'messages'   && <MessagesPage />}
+                    {activeNav === 'fleet'       && <FleetPage />}
+                    {activeNav === 'bookings'    && <BookingsPage />}
+                    {activeNav === 'messages'    && <MessagesPage />}
                     {activeNav === 'forecasting' && <ForecastingPage />}
                 </main>
             </div>

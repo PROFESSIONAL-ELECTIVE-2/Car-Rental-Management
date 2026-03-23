@@ -43,8 +43,10 @@ function Contact() {
     return (
         <div className="contact-page">
             <header className="contact-header">
-                <h1>Contact Us</h1>
-                <p>Have questions? We're here to help you get on the road.</p>
+                <div className='contact-overlay'>   
+                    <h1>HAVE QUESTIONS? CONTACT US.</h1>
+                    <p>We're here to help you get on the road.</p>
+                </div>
             </header>
 
             <div className="contact-container">

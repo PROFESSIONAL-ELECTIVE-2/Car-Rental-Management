@@ -201,7 +201,7 @@ function Home() {
                             }}
                             onMouseLeave={e => {
                                 e.target.style.background = 'transparent';
-                                e.target.style.color = '#040505';
+                                e.target.style.color = '#375d97';
                             }}
                         >
                             View Full Fleet 

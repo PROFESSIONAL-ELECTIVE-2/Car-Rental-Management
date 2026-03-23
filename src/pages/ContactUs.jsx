@@ -48,27 +48,6 @@ function Contact() {
             </header>
 
             <div className="contact-container">
-                <aside className="contact-info">
-                    <div className="info-block">
-                        <h3>Our Office</h3>
-                        <p>Main Branch Headquarters</p>
-                        <p>Manila, Philippines</p>
-                    </div>
-
-                    <div className="info-block">
-                        <h3>Customer Support</h3>
-                        <p><strong>Phone:</strong> 12345678910</p>
-                        <p><strong>Email:</strong> reychee06@gmail.com</p>
-                    </div>
-
-                    <div className="info-block">
-                        <h3>Business Hours</h3>
-                        <p>Monday - Friday: 8:00 AM - 6:00 PM</p>
-                        <p>Saturday - Sunday: 9:00 AM - 4:00 PM</p>
-                        <p><em>24/7 Support for Active Rentals</em></p>
-                    </div>
-                </aside>
-
                 <main className="contact-form-container">
                     {submitted ? (
                         <div className="success-message">
@@ -142,23 +121,22 @@ function Contact() {
                         </form>
                     )}
                 </main>
-            </div>
 
-            <section className="map-section">
-                <h3>Find Us on the Map</h3>
-                <div className="map-wrapper">
-                    <iframe
-                        title="Office Location"
-                        src="https://maps.google.com/maps?q=2F Alphabase Bldg, 45 Scout Rallos Brgy. Laging Handa, Quezon City&z=15&output=embed"
-                        width="100%"
-                        height="450"
-                        style={{ border: 0 }}
-                        allowFullScreen=""
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade">
-                    </iframe>
-                </div>
-            </section>
+                <section className="map-section">
+                    <div className="map-wrapper">
+                        <iframe
+                            title="Office Location"
+                            src="https://maps.google.com/maps?q=Ben-Lor Realty Trading & Publishing Corp.&z=15&output=embed"
+                            width="100%"
+                            height="450"
+                            style={{ border: 0 }}
+                            allowFullScreen=""
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade">
+                        </iframe>
+                    </div>
+                </section>
+            </div>
         </div>
     );
 }

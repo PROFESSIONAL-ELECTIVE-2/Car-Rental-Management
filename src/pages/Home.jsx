@@ -181,13 +181,13 @@ function Home() {
                 </div>
 
                 {!loading && !error && (
-                    <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+                    <div style={{ textAlign: 'center', marginTop: '4rem' }}>
                         <button
                             onClick={() => navigate('/fleet')}
                             style={{
                                 background: 'transparent',
-                                border: '2px solid var(--primary-blue, #2563eb)',
-                                color: 'var(--primary-blue, #2563eb)',
+                                border: '2px solid #375d97',
+                                color: '#375d97',
                                 padding: '10px 32px',
                                 borderRadius: '8px',
                                 fontWeight: 600,
@@ -196,12 +196,12 @@ function Home() {
                                 transition: 'background 0.2s, color 0.2s',
                             }}
                             onMouseEnter={e => {
-                                e.target.style.background = 'var(--primary-blue, #2563eb)';
+                                e.target.style.background = '#375d97';
                                 e.target.style.color = '#fff';
                             }}
                             onMouseLeave={e => {
                                 e.target.style.background = 'transparent';
-                                e.target.style.color = 'var(--primary-blue, #2563eb)';
+                                e.target.style.color = '#375d97';
                             }}
                         >
                             View Full Fleet →

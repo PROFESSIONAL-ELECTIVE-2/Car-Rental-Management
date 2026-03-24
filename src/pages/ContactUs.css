@@ -71,12 +71,12 @@
     grid-template-columns: 1fr 2fr;
     gap: 0;
     padding: 60px 10%;
-    align-items: center;
+    align-items: stretch;
     animation: fadeSlideUp 0.55s 0.2s ease both;
 }
 
 .contact-form-container {
-    height: 634px;
+    min-height: 634px;
     background: var(--surface);
     border-radius: 16px 0 0 16px;
     padding: 40px 40px;
@@ -225,6 +225,8 @@
 
 .map-section {
     padding: 0;
+    display: flex; /* Added */
+    flex-direction: column; /* Added */
     animation: fadeSlideUp 0.55s 0.25s ease both;
 }
 
@@ -245,6 +247,7 @@
 
 .map-wrapper {
     width: 100%;
+    flex-grow: 1; /* Tells the wrapper to take up all vertical space */
     border-radius: 0 16px 16px 0;
     overflow: hidden;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
@@ -254,7 +257,8 @@
 .map-wrapper iframe {
     display: block;
     width: 100%;
-    height: 634px;
+    height: 100%;
+    min-height: 634px;
     border: 0;
 }
 

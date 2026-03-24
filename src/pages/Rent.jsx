@@ -80,9 +80,12 @@ function Rent() {
     return (
         <div className="rent-page">
             <header className="rent-header">
-                <h1>Our Fleet</h1>
-                <p>Select from our range of well-maintained vehicles.</p>
-            </header>
+    <div className="rent-overlay"></div> {/* Add this line */}
+    <div className="rent-header-content"> {/* Wrap content for better layering */}
+        <h1>OUR FLEET</h1>
+        <p>Select from our range of well-maintained vehicles.</p>
+    </div>
+</header>
 
             <SearchBar
                 value={searchQuery}

@@ -159,8 +159,8 @@
     padding: 12px 32px;
     border: none;
     border-radius: 8px;
-    background: #375d97;
-    color: white;
+    background: #ffc107;
+    color: rgb(0, 0, 0);
     cursor: pointer;
     letter-spacing: 0.3px;
     transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
@@ -171,7 +171,7 @@
 .contact-form .btn:hover,
 .contact-form [type="submit"]:hover {
     background: #ffc107;
-    color: #375d97;
+    color: #000000;
     font-weight: 700;
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);

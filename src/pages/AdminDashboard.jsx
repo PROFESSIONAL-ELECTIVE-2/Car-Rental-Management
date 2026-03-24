@@ -25,7 +25,6 @@ const shortDay = (dateStr) =>
     new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short' });
 
 const Icons = {
-    
     Dashboard: () => (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
@@ -60,7 +59,6 @@ const Icons = {
             <polyline points="2 17 6 14 10 17 14 12 18 10 22 10"/>
         </svg>
     ),
-    
     Revenue: () => (
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="12" y1="1" x2="12" y2="23"/>
@@ -80,30 +78,17 @@ const Icons = {
             <polyline points="9 22 9 12 15 12 15 22"/>
         </svg>
     ),
-    // Utilities
     Warning: () => (
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-            <line x1="12" y1="9"  x2="12"   y2="13"/>
+            <line x1="12" y1="9"   x2="12"   y2="13"/>
             <line x1="12" y1="17" x2="12.01" y2="17"/>
-        </svg>
-    ),
-    Bell: () => (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
         </svg>
     ),
     Refresh: () => (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="23 4 23 10 17 10"/>
             <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-        </svg>
-    ),
-    Settings: () => (
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
         </svg>
     ),
     Logout: () => (
@@ -129,7 +114,7 @@ const Icons = {
 };
 
 const NAV_LINKS = [
-    { id: 'dashboard',   label: 'Dashboard',  Icon: Icons.Dashboard   },
+    { id: 'dashboard',   label: 'Dashboard',   Icon: Icons.Dashboard   },
     { id: 'fleet',       label: 'Fleet',       Icon: Icons.Fleet       },
     { id: 'bookings',    label: 'Bookings',    Icon: Icons.Bookings    },
     { id: 'messages',    label: 'Messages',    Icon: Icons.Messages    },
@@ -200,9 +185,10 @@ function FleetStatus({ fleet, bookingStats }) {
     if (!fleet.total) return null;
     const avPct    = (fleet.available / fleet.total) * 100;
     const rentPct  = (fleet.rented    / fleet.total) * 100;
+    // Consistent Green Theme for Donut
     const gradient = `conic-gradient(
-        var(--accent-gold) 0% ${avPct}%,
-        var(--primary-blue) ${avPct}% ${avPct + rentPct}%,
+        #10b981 0% ${avPct}%,
+        #059669 ${avPct}% ${avPct + rentPct}%,
         #374151 ${avPct + rentPct}% 100%
     )`;
     return (
@@ -222,12 +208,12 @@ function FleetStatus({ fleet, bookingStats }) {
                 </div>
                 <div className="ad-fleet__legend">
                     {[
-                        { label: 'Available',   val: fleet.available,   cls: 'gold' },
-                        { label: 'Rented',      val: fleet.rented,      cls: 'blue' },
-                        { label: 'Maintenance', val: fleet.maintenance, cls: 'grey' },
+                        { label: 'Available',   val: fleet.available,   color: '#ffe08a' },
+                        { label: 'Rented',      val: fleet.rented,      color: '#059669' },
+                        { label: 'Maintenance', val: fleet.maintenance, color: '#6b7280' },
                     ].map(item => (
                         <div key={item.label} className="ad-fleet__legend-row">
-                            <span className={`ad-fleet__dot ad-fleet__dot--${item.cls}`} />
+                            <span className="ad-fleet__dot" style={{ backgroundColor: item.color }} />
                             <span className="ad-fleet__legend-label">{item.label}</span>
                             <span className="ad-fleet__legend-val">{item.val}</span>
                         </div>
@@ -404,7 +390,6 @@ export default function AdminDashboard() {
     const [error,          setError]          = useState(null);
     const [activeNav,      setActiveNav]      = useState('dashboard');
     const [sidebarOpen,    setSidebarOpen]    = useState(false);
-    const [notifOpen,      setNotifOpen]      = useState(false);
     const [loggingOut,     setLoggingOut]     = useState(false);
     const [unreadMessages, setUnreadMessages] = useState(0);
     const [lastRefreshed,  setLastRefreshed]  = useState(null);
@@ -473,7 +458,7 @@ export default function AdminDashboard() {
     useEffect(() => {
         if (shouldPoll()) { startPolling(); } else { stopPolling(); }
         return () => stopPolling();
-    }, [data?.bookingStats?.active, data?.bookingStats?.pending]);
+    }, [data?.bookingStats?.active, data?.bookingStats?.pending, startPolling, stopPolling, shouldPoll]);
 
     useEffect(() => {
         const onVisible = () => {
@@ -505,7 +490,10 @@ export default function AdminDashboard() {
         }
     };
 
-    function navTo(id) { setActiveNav(id); setSidebarOpen(false); }
+    function navTo(id) { 
+        setActiveNav(id); 
+        setSidebarOpen(false); 
+    }
 
     const pendingCount = data?.bookingStats.pending ?? 0;
 
@@ -522,7 +510,6 @@ export default function AdminDashboard() {
 
             {sidebarOpen && <div className="ad-overlay" onClick={() => setSidebarOpen(false)} />}
 
-            
             <aside className={`ad-sidebar${sidebarOpen ? ' ad-sidebar--open' : ''}`}>
                 <div className="ad-sidebar__logo">
                     <div className="ad-sidebar__logo-icon">
@@ -562,7 +549,9 @@ export default function AdminDashboard() {
                             { label: 'Completed', val: data.bookingStats.completed, cls: 'completed' },
                         ].map(s => (
                             <div key={s.label} className="ad-sidebar__mini-row">
-                                <span className={`ad-sidebar__mini-dot ad-sidebar__mini-dot--${s.cls}`} />
+                                {/* Theme consistent green for active dot */}
+                                <span className={`ad-sidebar__mini-dot ad-sidebar__mini-dot--${s.cls}`} 
+                                      style={s.cls === 'active' ? { backgroundColor: '#10b981' } : {}} />
                                 <span className="ad-sidebar__mini-label">{s.label}</span>
                                 <span className="ad-sidebar__mini-val">{s.val}</span>
                             </div>
@@ -582,7 +571,6 @@ export default function AdminDashboard() {
                 </div>
             </aside>
 
-            
             <div className="ad-main">
                 <header className="ad-header">
                     <div className="ad-header__left">
@@ -603,46 +591,12 @@ export default function AdminDashboard() {
 
                     <div className="ad-header__right">
                         {activeNav === 'dashboard' && (
-                            <>
-                                <div className="ad-notif-wrap">
-                                    <button className="ad-notif-btn" onClick={() => setNotifOpen(v => !v)}>
-                                        <Icons.Bell />
-                                        {pendingCount > 0 && (
-                                            <span className="ad-notif-dot">{pendingCount}</span>
-                                        )}
-                                    </button>
-                                    {notifOpen && (
-                                        <div className="ad-notif-dropdown">
-                                            <p className="ad-notif-dropdown__title">Pending Bookings</p>
-                                            {data?.recentBookings
-                                                .filter(b => b.status === 'Pending')
-                                                .slice(0, 3)
-                                                .map(b => (
-                                                    <div key={b.id} className="ad-notif-item">
-                                                        <span className="ad-notif-item__dot" />
-                                                        <div>
-                                                            <p className="ad-notif-item__name">{b.customerName}</p>
-                                                            <p className="ad-notif-item__car">{b.car} — Pending approval</p>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            {(!data || data.recentBookings.filter(b => b.status === 'Pending').length === 0) && (
-                                                <p className="ad-notif-empty">No pending bookings</p>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                                <button className="ad-refresh-btn" onClick={() => fetchData(false)} title="Refresh">
-                                    <Icons.Refresh />
-                                </button>
-                            </>
+                            <button className="ad-refresh-btn" onClick={() => fetchData(false)} title="Refresh">
+                                <Icons.Refresh />
+                            </button>
                         )}
                         <div className="ad-avatar-group">
                             <div className="ad-avatar">AD</div>
-                            <div className="ad-avatar-info">
-                                <p className="ad-avatar-name">Admin</p>
-                                <p className="ad-avatar-role">Super Admin</p>
-                            </div>
                         </div>
                     </div>
                 </header>

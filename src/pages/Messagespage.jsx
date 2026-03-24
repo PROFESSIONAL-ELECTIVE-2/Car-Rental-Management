@@ -42,7 +42,6 @@ const URGENCY_META = {
     low:    { bg: '#f0fdf4', color: '#166534', dot: '#22c55e', border: '#bbf7d0', label: 'LOW',    full: 'Low'    },
 };
 
-// ─── Urgency badge ─────────────────────────────────────────────────────────────
 function UrgencyBadge({ urgency, size = 'sm' }) {
     if (!urgency) return null;
     const s = URGENCY_META[urgency] || URGENCY_META.low;
@@ -67,7 +66,6 @@ function UrgencyBadge({ urgency, size = 'sm' }) {
     );
 }
 
-// ─── Urgency summary bar ───────────────────────────────────────────────────────
 function UrgencySummaryBar({ messages, activeUrgency, onUrgencyFilter }) {
     const high   = messages.filter(m => m.urgency === 'high').length;
     const medium = messages.filter(m => m.urgency === 'medium').length;
@@ -159,7 +157,6 @@ function UrgencySummaryBar({ messages, activeUrgency, onUrgencyFilter }) {
     );
 }
 
-// ─── Status pill ───────────────────────────────────────────────────────────────
 function StatusPill({ status }) {
     const map = {
         Unread:   { bg: '#fef3c7', color: '#92400e', dot: '#f59e0b' },
@@ -180,14 +177,12 @@ function StatusPill({ status }) {
     );
 }
 
-// ─── Urgency detail panel (inside drawer) ─────────────────────────────────────
 function UrgencyPanel({ msg, onUrgencyCorrected }) {
     const [correcting,   setCorrecting]   = useState(false);
     const [saving,       setSavingLocal]  = useState(false);
     const [pickValue,    setPickValue]    = useState(msg.urgency || 'medium');
     const [saved,        setSaved]        = useState(false);
 
-    // Reset when message changes
     useEffect(() => {
         setCorrecting(false);
         setPickValue(msg.urgency || 'medium');
@@ -226,7 +221,7 @@ function UrgencyPanel({ msg, onUrgencyCorrected }) {
             padding: '14px 16px',
             marginBottom: 16,
         }}>
-            {/* Header row */}
+            
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700, color: meta?.color || '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -263,7 +258,7 @@ function UrgencyPanel({ msg, onUrgencyCorrected }) {
                 )}
             </div>
 
-            {/* Score row */}
+            
             {score != null && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                     <span style={{ fontSize: '0.72rem', color: meta?.color || '#64748b', fontWeight: 600 }}>
@@ -284,15 +279,15 @@ function UrgencyPanel({ msg, onUrgencyCorrected }) {
                 </div>
             )}
 
-            {/* Matched keywords breakdown */}
+            
             {bd && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                     {bd.highKeywords?.length > 0 && (
                         <KeywordRow
-                            label="High signals"
-                            color="#ef4444"
-                            bg="#fee2e2"
-                            items={bd.highKeywords.map(k => `${k.term} (+${k.weight})`)}
+                         label="High signals"
+                         color="#ef4444"
+                         bg="#fee2e2"
+                        items={bd.highKeywords}
                         />
                     )}
                     {bd.mediumKeywords?.length > 0 && (
@@ -300,7 +295,7 @@ function UrgencyPanel({ msg, onUrgencyCorrected }) {
                             label="Medium signals"
                             color="#f59e0b"
                             bg="#fef9c3"
-                            items={bd.mediumKeywords.map(k => k.term)}
+                            items={bd.mediumKeywords}
                         />
                     )}
                     {bd.timeSignals?.length > 0 && (
@@ -324,13 +319,13 @@ function UrgencyPanel({ msg, onUrgencyCorrected }) {
                             label="Low signals (−)"
                             color="#94a3b8"
                             bg="#f1f5f9"
-                            items={bd.lowKeywords.map(k => k.term)}
+                            items={bd.lowKeywords}
                         />
                     )}
                 </div>
             )}
 
-            {/* Correction UI */}
+            
             {correcting && (
                 <div style={{
                     marginTop: 12, paddingTop: 12,
@@ -398,7 +393,6 @@ function UrgencyPanel({ msg, onUrgencyCorrected }) {
     );
 }
 
-// Small helper for keyword tag rows
 function KeywordRow({ label, color, bg, items }) {
     return (
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, flexWrap: 'wrap' }}>
@@ -420,7 +414,6 @@ function KeywordRow({ label, color, bg, items }) {
     );
 }
 
-// ─── Reply composer ────────────────────────────────────────────────────────────
 function ReplyComposer({ msgId, msgSubject, onReplySent }) {
     const [open,    setOpen]    = useState(false);
     const [subject, setSubject] = useState(`Re: ${msgSubject || 'Your enquiry'}`);
@@ -549,7 +542,6 @@ function ReplyComposer({ msgId, msgSubject, onReplySent }) {
     );
 }
 
-// ─── Reply history ─────────────────────────────────────────────────────────────
 function ReplyHistory({ replies }) {
     if (!replies || replies.length === 0) return null;
     return (
@@ -579,7 +571,6 @@ function ReplyHistory({ replies }) {
     );
 }
 
-// ─── Message Drawer ────────────────────────────────────────────────────────────
 function MessageDrawer({ msg: initialMsg, onClose, onStatusChange, onUrgencyCorrected, saving }) {
     const [msg, setMsg] = useState(initialMsg);
     useEffect(() => { setMsg(initialMsg); }, [initialMsg]);
@@ -606,7 +597,7 @@ function MessageDrawer({ msg: initialMsg, onClose, onStatusChange, onUrgencyCorr
                 boxShadow: '-8px 0 32px rgba(0,0,0,0.15)',
                 animation: 'mp-slideIn 0.25s cubic-bezier(0.34,1.56,0.64,1)',
             }}>
-                {/* Header */}
+                
                 <div style={{
                     padding: '20px 24px 18px', background: '#111827',
                     display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
@@ -630,7 +621,7 @@ function MessageDrawer({ msg: initialMsg, onClose, onStatusChange, onUrgencyCorr
                     }}>×</button>
                 </div>
 
-                {/* Meta strip */}
+                
                 <div style={{
                     padding: '12px 24px', borderBottom: '1px solid #f1f5f9',
                     display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', flexShrink: 0,
@@ -647,13 +638,13 @@ function MessageDrawer({ msg: initialMsg, onClose, onStatusChange, onUrgencyCorr
                     </span>
                 </div>
 
-                {/* Body */}
+               
                 <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px 24px' }}>
 
-                    {/* ── Urgency panel ── */}
+                    
                     <UrgencyPanel msg={msg} onUrgencyCorrected={handleUrgencyUpdate} />
 
-                    {/* ── Original message ── */}
+                    
                     <p style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, marginTop: 0 }}>
                         Message
                     </p>
@@ -673,7 +664,7 @@ function MessageDrawer({ msg: initialMsg, onClose, onStatusChange, onUrgencyCorr
                     />
                 </div>
 
-                {/* Status actions footer */}
+                {}
                 <div style={{
                     padding: '14px 24px', borderTop: '1px solid #f1f5f9',
                     display: 'flex', gap: 8, flexShrink: 0, background: '#f8fafc', flexWrap: 'wrap',
@@ -698,13 +689,12 @@ function MessageDrawer({ msg: initialMsg, onClose, onStatusChange, onUrgencyCorr
     );
 }
 
-// ─── Main page ─────────────────────────────────────────────────────────────────
 export default function MessagesPage() {
     const [messages,       setMessages]       = useState([]);
     const [loading,        setLoading]        = useState(true);
     const [error,          setError]          = useState(null);
     const [activeTab,      setActiveTab]      = useState('All');
-    const [activeUrgency,  setActiveUrgency]  = useState(null);   // null = no urgency filter
+    const [activeUrgency,  setActiveUrgency]  = useState(null);   
     const [search,         setSearch]         = useState('');
     const [selected,       setSelected]       = useState(null);
     const [saving,         setSaving]         = useState(false);
@@ -723,7 +713,7 @@ export default function MessagesPage() {
 
     useEffect(() => { fetchMessages(); }, [fetchMessages]);
 
-    // Auto-mark Unread -> Read on open
+    
     const openMessage = async (msg) => {
         setSelected(msg);
         if (msg.status === 'Unread') {
@@ -735,7 +725,7 @@ export default function MessagesPage() {
                 });
                 setMessages(prev => prev.map(m => m._id === msg._id ? { ...m, status: 'Read' } : m));
                 setSelected(prev => prev?._id === msg._id ? { ...prev, status: 'Read' } : prev);
-            } catch { /* non-critical */ }
+            } catch {  }
         }
     };
 
@@ -767,7 +757,7 @@ export default function MessagesPage() {
         }
     };
 
-    // Called when admin corrects urgency inside the drawer
+    
     const handleUrgencyCorrected = (updatedMsg) => {
         setMessages(prev => prev.map(m => m._id === updatedMsg._id ? updatedMsg : m));
     };
@@ -805,7 +795,7 @@ export default function MessagesPage() {
                 .mp-row:hover .mp-del-btn { opacity: 1; }
             `}</style>
 
-            {/* Page header */}
+            
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
                 <div>
                     <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#111827', margin: 0 }}>
@@ -843,14 +833,14 @@ export default function MessagesPage() {
                 </button>
             </div>
 
-            {/* ── Urgency summary bar ── */}
+            
             <UrgencySummaryBar
                 messages={messages}
                 activeUrgency={activeUrgency}
                 onUrgencyFilter={setActiveUrgency}
             />
 
-            {/* Active urgency filter indicator */}
+            
             {activeUrgency && (
                 <div style={{
                     display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14,
@@ -880,7 +870,7 @@ export default function MessagesPage() {
                 </div>
             )}
 
-            {/* Status tabs + search */}
+            
             <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
                 <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: 10, padding: 4, gap: 2 }}>
                     {STATUS_TABS.map(tab => {
@@ -921,7 +911,7 @@ export default function MessagesPage() {
                 />
             </div>
 
-            {/* Table */}
+            
             <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
                 {loading ? (
                     <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8' }}>
@@ -988,7 +978,7 @@ export default function MessagesPage() {
                                                 ? '#fffbeb'
                                                 : '#fff',
                                     }}>
-                                    {/* Sender */}
+                                    
                                     <td style={{ padding: '14px 16px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                             <div style={{
@@ -1006,7 +996,7 @@ export default function MessagesPage() {
                                             </div>
                                         </div>
                                     </td>
-                                    {/* Subject + urgency badge */}
+                                    
                                     <td style={{ padding: '14px 16px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                             <span style={{
@@ -1019,7 +1009,7 @@ export default function MessagesPage() {
                                             <UrgencyBadge urgency={msg.urgency} />
                                         </div>
                                     </td>
-                                    {/* Preview */}
+                                    
                                     <td style={{ padding: '14px 16px', maxWidth: 220 }}>
                                         <p style={{
                                             margin: 0, fontSize: '0.85rem', color: '#475569',
@@ -1027,11 +1017,11 @@ export default function MessagesPage() {
                                             fontWeight: msg.status === 'Unread' ? 600 : 400,
                                         }}>{msg.message}</p>
                                     </td>
-                                    {/* Status */}
+                                    
                                     <td style={{ padding: '14px 16px' }}>
                                         <StatusPill status={msg.status} />
                                     </td>
-                                    {/* Replies */}
+                                    
                                     <td style={{ padding: '14px 16px' }}>
                                         {msg.replies?.length > 0 ? (
                                             <span style={{
@@ -1046,12 +1036,12 @@ export default function MessagesPage() {
                                             <span style={{ fontSize: '0.78rem', color: '#d1d5db' }}>—</span>
                                         )}
                                     </td>
-                                    {/* Received */}
+                                    
                                     <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
                                         <p style={{ margin: 0, fontSize: '0.82rem', color: '#374151' }}>{formatDate(msg.createdAt)}</p>
                                         <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8' }}>{formatTime(msg.createdAt)}</p>
                                     </td>
-                                    {/* Delete */}
+                                    
                                     <td style={{ padding: '14px 16px' }} onClick={e => e.stopPropagation()}>
                                         <button
                                             className="mp-del-btn"

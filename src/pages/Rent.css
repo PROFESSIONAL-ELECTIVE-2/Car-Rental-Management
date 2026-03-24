@@ -315,8 +315,15 @@
     background: white;
     border-radius: 16px;
     color: var(--dark-grey);
+    white-space: normal !important;
     border: 1.5px dashed var(--border);
     font-size: 1rem;
+    white-space: normal;        
+    overflow-wrap: anywhere;    
+    word-break: normal;         
+    min-width: 0;               
+    max-width: 100%;           
+    box-sizing: border-box;
 }
 
 .no-results strong {

@@ -178,7 +178,7 @@
 }
 
 .success-message {
-    max-height: auto;
+    min-height: 634px;
     height: stretch;
     display: flex;
     flex-direction: column;
@@ -225,8 +225,8 @@
 
 .map-section {
     padding: 0;
-    display: flex; /* Added */
-    flex-direction: column; /* Added */
+    display: flex; 
+    flex-direction: column;
     animation: fadeSlideUp 0.55s 0.25s ease both;
 }
 
@@ -247,7 +247,7 @@
 
 .map-wrapper {
     width: 100%;
-    flex-grow: 1; /* Tells the wrapper to take up all vertical space */
+    flex-grow: 1; 
     border-radius: 0 16px 16px 0;
     overflow: hidden;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);

@@ -18,6 +18,7 @@ function Footer() {
                     </Link>
                     <p>Your premium car rental destination. Reliable, affordable, and ready for your next journey across the Philippines.</p>
                 </div>
+
                 <div className="footer-section">
                     <h3>Explore</h3>
                     <ul>
@@ -26,22 +27,22 @@ function Footer() {
                         <li><Link to="/about" onClick={scrollTop}>About Us</Link></li>
                     </ul>
                 </div>
+
                 <div className="footer-section">
                     <h3>Support</h3>
                     <ul>
-                        <li><Link to="/faq" onClick={scrollTop}>FAQs</Link></li>
                         <li><Link to="/contact" onClick={scrollTop}>Contact Us</Link></li>
-                        <li><Link to="/privacy" onClick={scrollTop}>Privacy Policy</Link></li>
-                        <li><Link to="/terms" onClick={scrollTop}>Terms of Service</Link></li>
                     </ul>
                 </div>
             </div>
+
             <div className="footer-bottom">
                 <p>&copy; {new Date().getFullYear()} Triple R and A Car Rental. All rights reserved.</p>
                 <div className="footer-bottom-accent">
                     <span /><span /><span />
                 </div>
             </div>
+
             <button
                 className="floating-return-btn"
                 onClick={scrollTop}

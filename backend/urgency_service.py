@@ -177,6 +177,15 @@ LOW_KEYWORDS: list[Keyword] = [
 # Negation window: looks for NOT/NO/NEVER within 3 words before the term
 _NEGATION_PREFIX = r'(?:not|no|none|never|hindi|wala)\s+(?:\w+\s+){0,2}'
 
+def classify_urgency(message: str, subject: str = '') -> ClassifyResult:
+
+    if len(message.strip()) < 3:
+        return ClassifyResult(
+            urgency='low',
+            score=0.0,
+            breakdown={'note': 'Message too short to classify'},
+        )
+    
 def _is_negated(text: str, term: str) -> bool:
     """Return True if `term` appears to be negated in `text`."""
     escaped = re.escape(term)
@@ -334,7 +343,7 @@ def classify_urgency(message: str, subject: str = '') -> ClassifyResult:
 
     if final_score >= 10:
         urgency = 'high'
-    elif final_score >= 1 and has_medium_signal:
+    elif final_score >= 3 and has_medium_signal:
         urgency = 'medium'
     else:
         urgency = 'low'

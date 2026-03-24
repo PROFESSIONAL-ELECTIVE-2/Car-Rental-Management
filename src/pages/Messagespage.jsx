@@ -779,7 +779,7 @@ export default function MessagesPage() {
     const highUnread  = messages.filter(m => m.urgency === 'high' && m.status === 'Unread').length;
 
     return (
-        <div style={{ padding: '24px 28px', minHeight: '100%', fontFamily: "'DM Sans','Inter',sans-serif" }}>
+        <div style={{ minHeight: '100%', fontFamily: "'DM Sans','Inter',sans-serif" }}>
             <style>{`
                 @keyframes mp-slideIn {
                     from { transform: translateX(100%); opacity: 0; }

@@ -104,7 +104,7 @@ function AdminLogin() {
                             <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                         </svg>
                     </div>
-                    <p className="al-eyebrow">Triple R and A Car Rental</p>
+                    <p className="al-eyebrow">Triple R & A Transport Services</p>
                     <h1 className="al-title">Admin Portal</h1>
                     <p className="al-subtitle">Sign in to manage your fleet and bookings.</p>
                 </header>
@@ -248,7 +248,7 @@ function AdminLogin() {
                         onClick={() => navigate('/')}
                         aria-label="Go back to homepage"
                     >
-                        ← Back to Home
+                        Back to Home
                     </button>
                 </footer>
             </div>

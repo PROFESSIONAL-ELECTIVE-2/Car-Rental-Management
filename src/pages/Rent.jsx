@@ -98,9 +98,15 @@ function Rent() {
                 {!loading && error && <p className="error-message">{error}</p>}
                 {!loading && !error && filteredCars.length === 0 && (
                     <div className="no-results">
-                        {searchQuery
-                            ? <>No cars found for "<strong>{searchQuery}</strong>"</>
-                            : 'No vehicles available at the moment.'}
+                        {searchQuery ? (
+                            <>
+                                No cars found for 
+                                <br />
+                                <strong>"{searchQuery}"</strong>
+                            </>
+                        ) : (
+                            'No vehicles available at the moment.'
+                        )}
                     </div>
                 )}
                 {!loading && !error && filteredCars.map(car => (

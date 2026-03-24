@@ -178,7 +178,7 @@
 }
 
 .success-message {
-    max-height: auto;
+    min-height: 634px;
     height: stretch;
     display: flex;
     flex-direction: column;

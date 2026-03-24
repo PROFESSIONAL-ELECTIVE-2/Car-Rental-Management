@@ -120,10 +120,14 @@ function About() {
                         <p>Experience high-quality car rentals with 24/7 support.</p>
                     </div>
                     <div className="cta-actions">
-                        <Button onClick={() => navigate('/rent')} className="btn-primary-large">
+                        <Button onClick={() => 
+                            window.scrollTo({ top: 0, behavior: 'smooth' }) || 
+                            navigate('/fleet')} className="btn-primary-large">
                             Browse Our Fleet
                         </Button>
-                        <button onClick={() => navigate('/contact')} className="btn-outline-white">
+                        <button onClick={() => 
+                            window.scrollTo({ top: 0, behavior: 'smooth' }) || 
+                            navigate('/contact')} className="btn-outline-white">
                             Contact Support
                         </button>
                     </div>

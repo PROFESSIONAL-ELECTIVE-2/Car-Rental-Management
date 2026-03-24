@@ -472,7 +472,7 @@ function BookingDrawer({ booking: initialBooking, onClose, onStatusChange, onBoo
                                         className={`bp-status-btn bp-status-btn--${s.toLowerCase()}`}
                                         onClick={() => setConfirm({ type: 'status', status: s, label: `Mark as ${s}` })}
                                         disabled={updating || deleting}>
-                                        {updating ? '…' : `→ ${s}`}
+                                        {updating ? '…' : ` ${s}`}
                                     </button>
                                 ))}
                             </div>
@@ -764,7 +764,7 @@ export default function BookingsPage() {
                         <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                     </svg>
                     <input ref={searchRef} className="bp-search"
-                        placeholder="Search customer, vehicle, ref… (Ctrl+F)"
+                        placeholder="Search customer, vehicle, reference number..."
                         value={search} onChange={e => changeSearch(e.target.value)} />
                     {search && <button className="bp-search-clear" onClick={() => changeSearch('')}>×</button>}
                 </div>
@@ -844,7 +844,7 @@ export default function BookingsPage() {
                                 </td>
                                 <td>
                                     <p className="bp-date">{fmt(b.startDate)}</p>
-                                    <p className="bp-date bp-date--end">→ {fmt(b.endDate)}</p>
+                                    <p className="bp-date bp-date--end"> {fmt(b.endDate)}</p>
                                 </td>
                                 <td>
                                     {b.quotedPrice
@@ -860,7 +860,7 @@ export default function BookingsPage() {
                                 <td onClick={e => e.stopPropagation()}>
                                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                                         <button className="bp-view-btn" onClick={() => setSelected(b)}>
-                                            View →
+                                            View 
                                         </button>
                                         <button
                                             className="bp-inline-delete"

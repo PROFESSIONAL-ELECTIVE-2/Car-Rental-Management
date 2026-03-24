@@ -330,7 +330,7 @@ function DashboardOverview({ data, loading, error, onRetry, onNav, lastRefreshed
                             </span>
                         )}
                         <button className="ad-view-all-btn" onClick={() => onNav('bookings')}>
-                            View all bookings →
+                            View all bookings 
                         </button>
                     </div>
                 </div>

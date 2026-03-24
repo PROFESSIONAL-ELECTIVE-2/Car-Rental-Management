@@ -215,7 +215,6 @@
 .fleet-grid > * h3,
 .fleet-grid > * .car-name,
 .fleet-grid > * .card-title {
-    font-family: var(--font-display);
     font-size: 1.25rem;
     font-weight: 700;
     color: var(--dark-grey);

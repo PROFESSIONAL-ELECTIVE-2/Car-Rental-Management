@@ -5,6 +5,8 @@ import BookingsPage from './BookingsPage.jsx';
 import MessagesPage from './Messagespage.jsx';
 import ForecastingPage from './ForecastingPage.jsx';
 import './AdminDashboard.css';
+import Logo from '../assets/Logo.svg';
+import LName from '../assets/LName.png';
 
 const API_BASE_URL  = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const POLL_INTERVAL = 30_000;
@@ -513,10 +515,11 @@ export default function AdminDashboard() {
             <aside className={`ad-sidebar${sidebarOpen ? ' ad-sidebar--open' : ''}`}>
                 <div className="ad-sidebar__logo">
                     <div className="ad-sidebar__logo-icon">
-                        <Icons.LogoVehicle />
+                        <img src={Logo} alt="Logo" className="ad-sidebar__logo-img"/>
+                        
                     </div>
                     <div>
-                        <p className="ad-sidebar__brand">Triple R &amp; A</p>
+                        <img src={LName} alt="Brand Name" className="ad-sidebar__logo-name"/>
                         <p className="ad-sidebar__brand-sub">Admin Portal</p>
                     </div>
                 </div>

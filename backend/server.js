@@ -25,7 +25,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ── Rate limiters ─────────────────────────────────────────────────────────────
 const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, max: 200,
     message: { message: 'Too many requests. Please slow down.' },
@@ -49,7 +48,6 @@ const bookingLimiter = rateLimit({
 
 app.use(generalLimiter);
 
-// ── Urgency microservice ──────────────────────────────────────────────────────
 async function callClassifier(message, subject = '') {
     try {
         const res = await fetch(`${URGENCY_URL}/classify`, {
@@ -78,7 +76,6 @@ async function callBatchReclassify(messages) {
     return data.results || [];
 }
 
-// ── Email ─────────────────────────────────────────────────────────────────────
 const transporter = nodemailer.createTransport({
     service: process.env.EMAIL_SERVICE || 'gmail',
     auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
@@ -192,7 +189,6 @@ async function sendEmail(to, subject, html) {
     } catch (e) { console.error('Email error:', e.message); }
 }
 
-// ── Schemas ───────────────────────────────────────────────────────────────────
 const bookingSchema = new mongoose.Schema({
     carId:          { type: mongoose.Schema.Types.ObjectId, ref: 'Car', required: true },
     qty:            { type: Number, required: true, min: 1, default: 1 },
@@ -239,7 +235,6 @@ const messageSchema = new mongoose.Schema({
 
 const Message = mongoose.models.Message || mongoose.model('Message', messageSchema, 'messages');
 
-// ── Auth middleware ────────────────────────────────────────────────────────────
 function requireAdmin(req, res, next) {
     const auth = req.headers.authorization;
     if (!auth?.startsWith('Bearer '))
@@ -263,7 +258,10 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function escapeRegex(str) { return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 function clean(str) { return String(str ?? '').replace(/<[^>]*>/g, '').trim(); }
 
-// ── Database ──────────────────────────────────────────────────────────────────
+function hashToken(raw) {
+    return crypto.createHash('sha256').update(raw).digest('hex');
+}
+
 mongoose.connect(mongoURI)
     .then(() => {
         console.log('--- Database Info ---');
@@ -273,10 +271,6 @@ mongoose.connect(mongoURI)
         console.log('---------------------');
     })
     .catch(err => console.error('MongoDB Error:', err));
-
-// =============================================================================
-//  PUBLIC ROUTES
-// =============================================================================
 
 app.get('/api/cars', async (req, res) => {
     try { res.json(await Car.find()); }
@@ -381,11 +375,6 @@ app.post('/api/messages', contactLimiter, async (req, res) => {
     } catch (err) { console.error('Message error:', err); res.status(500).json({ message: 'Server Error.' }); }
 });
 
-// =============================================================================
-//  ADMIN AUTH
-//  IMPORTANT: Specific routes (forgot-password, reset-password) MUST come
-//  before any wildcard/param routes to avoid 404s in Express 5
-// =============================================================================
 
 app.post('/api/admin/login', loginLimiter, async (req, res) => {
     const { identifier, password } = req.body;
@@ -408,61 +397,113 @@ app.post('/api/admin/login', loginLimiter, async (req, res) => {
     } catch (err) { console.error(err); res.status(500).json({ message: 'Internal Server Error' }); }
 });
 
-// NOTE: These two routes have NO requireAdmin — they must be public
 app.post('/api/admin/forgot-password', loginLimiter, async (req, res) => {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ message: 'Email is required.' });
+    const raw_email = req.body?.email;
+    if (!raw_email || typeof raw_email !== 'string') {
+        return res.status(400).json({ message: 'Email is required.' });
+    }
+ 
+    const email = raw_email.trim().toLowerCase();
+ 
+    if (!emailRegex.test(email)) {
+        // Generic response — don't reveal the email is invalid
+        return res.json({ message: 'If that email is registered, a reset link has been sent.' });
+    }
+ 
     try {
-        const admin = await Admin.findOne({ email: email.trim().toLowerCase() });
-        if (!admin) return res.json({ message: 'If that email is registered, a reset link has been sent.' });
-        const token  = crypto.randomBytes(32).toString('hex');
-        const expiry = new Date(Date.now() + 60 * 60 * 1000);
-        admin.resetToken       = token;
+        
+        const escaped = escapeRegex(email);
+        const admin = await Admin.findOne({
+        $or: [
+        { email: { $regex: new RegExp(`^${escaped}$`, 'i') } },
+        { username: { $regex: new RegExp(`^${escaped}$`, 'i') } }
+        ]
+});
+ 
+        if (!admin) {
+            console.log(`[forgot-password] no account for ${email} — silent no-op`);
+            return res.json({ message: 'If that email is registered, a reset link has been sent.' });
+        }
+ 
+        const rawToken    = crypto.randomBytes(32).toString('hex');
+        const hashedToken = hashToken(rawToken);
+        const expiry      = new Date(Date.now() + 60 * 60 * 1000); 
+        admin.resetToken       = hashedToken;
         admin.resetTokenExpiry = expiry;
         await admin.save();
-        const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/admin/reset-password?token=${token}`;
+ 
+        const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/admin/reset-password?token=${rawToken}`;
+ 
         const html = htmlShell('Password Reset Request', `
             <p>Hi <strong>${admin.username}</strong>,</p>
-            <p>We received a request to reset the password for your admin account.</p>
-            <p>Click the button below to reset your password. This link expires in <strong>1 hour</strong>.</p>
+            <p>We received a request to reset the password for the admin account associated with this email address.</p>
+            <p>Click the button below to set a new password. This link is valid for <strong>1 hour</strong> and can only be used once.</p>
             <p style="text-align:center;margin:28px 0">
-                <a href="${resetUrl}" style="background:#2563eb;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:700;font-size:0.95rem;display:inline-block">
+                <a href="${resetUrl}"
+                   style="background:#2563eb;color:#fff;padding:14px 32px;border-radius:8px;
+                          text-decoration:none;font-weight:700;font-size:0.95rem;display:inline-block">
                     Reset Password
                 </a>
             </p>
-            <p>If you did not request this, you can safely ignore this email.</p>
-            <p>Or copy this link:<br/><span style="font-size:0.82rem;color:#6b7280;word-break:break-all">${resetUrl}</span></p>
+            <p>If you did not request a password reset you can safely ignore this email — your password will not change.</p>
+            <p style="font-size:0.82rem;color:#6b7280;margin-top:20px">
+                Or copy this link into your browser:<br/>
+                <span style="word-break:break-all">${resetUrl}</span>
+            </p>
         `, '#2563eb');
+ 
         await sendEmail(admin.email, `Password Reset | ${BRAND}`, html);
-        console.log(`Password reset requested: ${admin.email}`);
-        res.json({ message: 'If that email is registered, a reset link has been sent.' });
-    } catch (err) { console.error('Forgot password error:', err); res.status(500).json({ message: 'Server Error.' }); }
+        console.log(`[forgot-password] reset email sent to ${admin.email}`);
+ 
+        return res.json({ message: 'If that email is registered, a reset link has been sent.' });
+ 
+    } catch (err) {
+        console.error('[forgot-password] error:', err);
+        return res.status(500).json({ message: 'Server Error.' });
+    }
 });
 
 app.post('/api/admin/reset-password', async (req, res) => {
-    const { token, newPassword } = req.body;
-    if (!token || !newPassword) return res.status(400).json({ message: 'Token and new password are required.' });
-    if (newPassword.length < 8) return res.status(400).json({ message: 'Password must be at least 8 characters.' });
+    const { token: rawToken, newPassword } = req.body;
+ 
+    if (!rawToken || typeof rawToken !== 'string' || !newPassword) {
+        return res.status(400).json({ message: 'Token and new password are required.' });
+    }
+ 
+    if (newPassword.length < 8) {
+        return res.status(400).json({ message: 'Password must be at least 8 characters.' });
+    }
+ 
     try {
-        const admin = await Admin.findOne({ resetToken: token, resetTokenExpiry: { $gt: new Date() } });
-        if (!admin) return res.status(400).json({ message: 'Reset link is invalid or has expired.' });
+        const hashedToken = hashToken(rawToken.trim());
+ 
+        const admin = await Admin.findOne({
+            resetToken:       hashedToken,
+            resetTokenExpiry: { $gt: new Date() }, 
+        });
+ 
+        if (!admin) {
+            return res.status(400).json({ message: 'Reset link is invalid or has expired. Please request a new one.' });
+        }
+ 
         admin.password         = await bcrypt.hash(newPassword, 12);
         admin.resetToken       = null;
         admin.resetTokenExpiry = null;
         await admin.save();
-        console.log(`Password reset completed: ${admin.email}`);
-        res.json({ message: 'Password reset successfully. You can now log in.' });
-    } catch (err) { console.error('Reset password error:', err); res.status(500).json({ message: 'Server Error.' }); }
+ 
+        console.log(`[reset-password] password changed for ${admin.email}`);
+        return res.json({ message: 'Password reset successfully. You can now log in.' });
+ 
+    } catch (err) {
+        console.error('[reset-password] error:', err);
+        return res.status(500).json({ message: 'Server Error.' });
+    }
 });
 
 app.post('/api/admin/logout', requireAdmin, (req, res) => {
     tokenBlacklist.add(req.token);
     res.json({ message: 'Logged out successfully.' });
 });
-
-// =============================================================================
-//  ADMIN: BOOKINGS
-// =============================================================================
 
 app.get('/api/bookings', requireAdmin, async (req, res) => {
     try { res.json(await Booking.find().sort({ createdAt: -1 }).populate('carId', 'title type image')); }
@@ -552,10 +593,6 @@ app.delete('/api/admin/bookings/:id', requireAdmin, async (req, res) => {
     } catch (err) { await session.abortTransaction(); session.endSession(); console.error('Delete booking error:', err); res.status(500).json({ message: 'Server Error: Could not delete booking.' }); }
 });
 
-// =============================================================================
-//  ADMIN: FLEET
-// =============================================================================
-
 app.get('/api/admin/cars', requireAdmin, async (req, res) => {
     try { res.json(await Car.find().sort({ createdAt: -1 })); }
     catch { res.status(500).json({ message: 'Server Error.' }); }
@@ -595,18 +632,11 @@ app.delete('/api/admin/cars/:id', requireAdmin, async (req, res) => {
     } catch (err) { console.error(err); res.status(500).json({ message: 'Server Error.' }); }
 });
 
-// =============================================================================
-//  ADMIN: MESSAGES
-//  IMPORTANT: Static routes (/reclassify, /urgency-report) MUST come
-//  BEFORE param routes (/:id/...) — Express 5 is strict about this
-// =============================================================================
-
 app.get('/api/admin/messages', requireAdmin, async (req, res) => {
     try { res.json(await Message.find().sort({ createdAt: -1 })); }
     catch { res.status(500).json({ message: 'Server Error.' }); }
 });
 
-// Static routes FIRST
 app.post('/api/admin/messages/reclassify', requireAdmin, async (req, res) => {
     try {
         const dbMessages = await Message.find({ urgencyConfirmed: { $ne: true } });
@@ -635,7 +665,6 @@ app.get('/api/admin/messages/urgency-report', requireAdmin, async (req, res) => 
     } catch (err) { console.error('Urgency report error:', err); res.status(500).json({ message: 'Server Error.' }); }
 });
 
-// Param routes AFTER
 app.put('/api/admin/messages/:id/status', requireAdmin, async (req, res) => {
     const { status } = req.body;
     if (!['Unread', 'Read', 'Archived'].includes(status)) return res.status(400).json({ message: 'Invalid status.' });
@@ -682,9 +711,6 @@ app.put('/api/admin/messages/:id/urgency', requireAdmin, async (req, res) => {
     } catch (err) { console.error('Urgency update error:', err); res.status(500).json({ message: 'Server Error.' }); }
 });
 
-// =============================================================================
-//  ADMIN: DASHBOARD ANALYTICS
-// =============================================================================
 
 app.get('/api/dashboard/analytics', requireAdmin, async (req, res) => {
     try {

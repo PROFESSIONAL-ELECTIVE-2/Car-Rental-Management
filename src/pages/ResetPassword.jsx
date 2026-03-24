@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import './AdminLogin.css'; // Importing the shared CSS
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -19,7 +20,9 @@ export default function ResetPassword() {
         if (password !== confirm) { setError('Passwords do not match.'); return; }
         if (password.length < 8)  { setError('Password must be at least 8 characters.'); return; }
 
-        setLoading(true); setError('');
+        setLoading(true); 
+        setError('');
+        
         try {
             const res  = await fetch(`${API_BASE_URL}/api/admin/reset-password`, {
                 method:  'POST',
@@ -36,74 +39,190 @@ export default function ResetPassword() {
         }
     }
 
-    if (!token) return (
-        <main style={styles.root}>
-            <div style={styles.card}>
-                <p style={{ textAlign:'center', color:'#991b1b' }}>Invalid reset link.</p>
-                <button style={styles.btn} onClick={() => navigate('/admin/login')}>Back to Login</button>
-            </div>
-        </main>
-    );
+    // ── Invalid Token State ───────────────────────────────────────────
+    if (!token) {
+        return (
+            <main className="al-root" aria-label="Invalid reset link">
+                <div className="al-bg" aria-hidden="true">
+                    <div className="al-bg-overlay" />
+                </div>
+                <div className="al-card">
+                    <header className="al-header">
+                        <div className="al-logo" aria-hidden="true" style={{ background: 'var(--al-red)' }}>
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                            </svg>
+                        </div>
+                        <p className="al-eyebrow">Triple R and A Car Rental</p>
+                        <h1 className="al-title">Invalid Link</h1>
+                        <p className="al-subtitle">This password reset link is invalid or has expired.</p>
+                    </header>
+                    <footer className="al-footer">
+                        <button
+                            type="button"
+                            className="al-back"
+                            onClick={() => navigate('/admin/login')}
+                            aria-label="Go back to login"
+                        >
+                            ← Back to Login
+                        </button>
+                    </footer>
+                </div>
+            </main>
+        );
+    }
 
-    if (done) return (
-        <main style={styles.root}>
-            <div style={styles.card}>
-                <h1 style={styles.title}>Password Reset!</h1>
-                <p style={styles.sub}>Your password has been updated successfully.</p>
-                <button style={styles.btn} onClick={() => navigate('/admin/login')}>
-                    Go to Login
-                </button>
-            </div>
-        </main>
-    );
+    // ── Success State ─────────────────────────────────────────────────
+    if (done) {
+        return (
+            <main className="al-root" aria-label="Password reset confirmation">
+                <div className="al-bg" aria-hidden="true">
+                    <div className="al-bg-overlay" />
+                </div>
+                <div className="al-card">
+                    <header className="al-header">
+                        <div className="al-logo" aria-hidden="true" style={{ background: '#10b981' }}>
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                            </svg>
+                        </div>
+                        <p className="al-eyebrow">Triple R and A Car Rental</p>
+                        <h1 className="al-title">Password Reset!</h1>
+                        <p className="al-subtitle">Your password has been updated successfully.</p>
+                    </header>
+                    <footer className="al-footer">
+                        <button
+                            type="button"
+                            className="al-back"
+                            onClick={() => navigate('/admin/login')}
+                            aria-label="Go back to login"
+                        >
+                            ← Go to Login
+                        </button>
+                    </footer>
+                </div>
+            </main>
+        );
+    }
 
+    // ── Form State ────────────────────────────────────────────────────
     return (
-        <main style={styles.root}>
-            <div style={styles.card}>
-                <h1 style={styles.title}>Reset Password</h1>
-                <p style={styles.sub}>Enter a new password for your admin account.</p>
+        <main className="al-root" aria-label="Reset password page">
+            <div className="al-bg" aria-hidden="true">
+                <div className="al-bg-overlay" />
+            </div>
 
-                {error && <div style={styles.error}>{error}</div>}
+            <div className="al-card">
+                <header className="al-header">
+                    <div className="al-logo" aria-hidden="true">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                    </div>
+                    <p className="al-eyebrow">Triple R and A Car Rental</p>
+                    <h1 className="al-title">Reset Password</h1>
+                    <p className="al-subtitle">Enter a new password for your admin account.</p>
+                </header>
 
-                <form onSubmit={handleSubmit} style={{ display:'flex', flexDirection:'column', gap:14 }}>
-                    <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
-                        <label style={styles.label}>New Password</label>
-                        <input
-                            type="password" required
-                            value={password}
-                            onChange={e => setPassword(e.target.value)}
-                            placeholder="Min. 8 characters"
-                            disabled={loading}
-                            style={styles.input}
-                        />
+                {error && (
+                    <div className="al-error" role="alert" aria-live="assertive">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        {error}
                     </div>
-                    <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
-                        <label style={styles.label}>Confirm Password</label>
-                        <input
-                            type="password" required
-                            value={confirm}
-                            onChange={e => setConfirm(e.target.value)}
-                            placeholder="Repeat your new password"
-                            disabled={loading}
-                            style={styles.input}
-                        />
+                )}
+
+                <form className="al-form" onSubmit={handleSubmit} noValidate>
+                    <div className="al-field">
+                        <label htmlFor="rp-password" className="al-label">
+                            New Password
+                        </label>
+                        <div className="al-input-wrap">
+                            <span className="al-input-icon" aria-hidden="true">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" strokeWidth="2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2"/>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                </svg>
+                            </span>
+                            <input
+                                id="rp-password"
+                                type="password"
+                                required
+                                className="al-input"
+                                placeholder="Min. 8 characters"
+                                value={password}
+                                onChange={e => { setPassword(e.target.value); setError(''); }}
+                                disabled={loading}
+                            />
+                        </div>
                     </div>
-                    <button type="submit" disabled={loading} style={styles.btn}>
-                        {loading ? 'Resetting…' : 'Reset Password'}
+
+                    <div className="al-field">
+                        <label htmlFor="rp-confirm" className="al-label">
+                            Confirm Password
+                        </label>
+                        <div className="al-input-wrap">
+                            <span className="al-input-icon" aria-hidden="true">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" strokeWidth="2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2"/>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                </svg>
+                            </span>
+                            <input
+                                id="rp-confirm"
+                                type="password"
+                                required
+                                className="al-input"
+                                placeholder="Repeat your new password"
+                                value={confirm}
+                                onChange={e => { setConfirm(e.target.value); setError(''); }}
+                                disabled={loading}
+                            />
+                        </div>
+                    </div>
+
+                    <button
+                        type="submit"
+                        className="al-submit"
+                        disabled={loading || !password || !confirm}
+                        aria-busy={loading}
+                        aria-label={loading ? 'Resetting password, please wait' : 'Reset Password'}
+                    >
+                        {loading ? (
+                            <>
+                                <span className="al-spinner" aria-hidden="true" />
+                                Resetting…
+                            </>
+                        ) : (
+                            'Reset Password'
+                        )}
                     </button>
                 </form>
+
+                <footer className="al-footer">
+                    <button
+                        type="button"
+                        className="al-back"
+                        onClick={() => navigate('/admin/login')}
+                        aria-label="Go back to login"
+                    >
+                        ← Back to Login
+                    </button>
+                </footer>
             </div>
         </main>
     );
 }
-
-const styles = {
-    root:  { minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f3f4f8', padding:20 },
-    card:  { background:'#fff', borderRadius:16, padding:'2.5rem', width:'100%', maxWidth:420, boxShadow:'0 20px 60px rgba(0,0,0,0.12)' },
-    title: { fontSize:'1.6rem', fontWeight:800, color:'#111827', margin:'0 0 8px', textAlign:'center' },
-    sub:   { fontSize:'0.9rem', color:'#6b7280', margin:'0 0 24px', textAlign:'center', lineHeight:1.6 },
-    label: { fontSize:'0.78rem', fontWeight:600, color:'#374151', textTransform:'uppercase', letterSpacing:'0.6px' },
-    input: { padding:'10px 14px', border:'1.5px solid #e5e7eb', borderRadius:8, fontSize:'0.9rem', outline:'none', fontFamily:'inherit' },
-    btn:   { padding:'11px', background:'#2563eb', color:'#fff', border:'none', borderRadius:8, fontSize:'0.9rem', fontWeight:700, cursor:'pointer', fontFamily:'inherit' },
-    error: { background:'#fee2e2', color:'#991b1b', border:'1px solid #fca5a5', borderRadius:8, padding:'10px 14px', fontSize:'0.85rem', marginBottom:8 },
-};

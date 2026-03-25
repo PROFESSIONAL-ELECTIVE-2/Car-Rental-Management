@@ -67,7 +67,7 @@ export default function ResetPassword() {
                             onClick={() => navigate('/admin/login')}
                             aria-label="Go back to login"
                         >
-                            ← Back to Login
+                            Back to Login
                         </button>
                     </footer>
                 </div>
@@ -102,7 +102,7 @@ export default function ResetPassword() {
                             onClick={() => navigate('/admin/login')}
                             aria-label="Go back to login"
                         >
-                            ← Go to Login
+                            Go to Login
                         </button>
                     </footer>
                 </div>
@@ -219,7 +219,7 @@ export default function ResetPassword() {
                         onClick={() => navigate('/admin/login')}
                         aria-label="Go back to login"
                     >
-                        ← Back to Login
+                        Back to Login
                     </button>
                 </footer>
             </div>

@@ -234,11 +234,18 @@ function CartItem({ item, allCars, onUpdate, onRemove, index }) {
     const maxQty = item.car.stock;
 
     function handleDateChange({ start, end }) {
+        function toLocalDateStr(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
         if (start && end) {
             const days = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1;
-            onUpdate({ pickupDate: start.toISOString().split('T')[0], rentalDays: days });
+            onUpdate({ pickupDate: toLocalDateStr(start), rentalDays: days });
         } else if (start) {
-            onUpdate({ pickupDate: start.toISOString().split('T')[0], rentalDays: 1 });
+            onUpdate({ pickupDate: toLocalDateStr(start), rentalDays: 1 });
         } else {
             onUpdate({ pickupDate: '', rentalDays: 1 });
         }
@@ -405,10 +412,10 @@ function RentModal({ car, allCars = [], onClose, onConfirm }) {
                 customerName:   customer.fullName,
                 customerEmail:  customer.email,
                 customerPhone:  customer.phone,
-                startDate:      new Date(item.pickupDate).toISOString(),
+                startDate:      new Date(`${item.pickupDate}T00:00:00`).toISOString(),
                 endDate:        (() => {
-                    const d = new Date(item.pickupDate);
-                    d.setDate(d.getDate() + item.rentalDays);
+                    const d = new Date(`${item.pickupDate}T00:00:00`);
+                    d.setDate(d.getDate() + item.rentalDays - 1);
                     return d.toISOString();
                 })(),
                 rentalDays:     item.rentalDays,

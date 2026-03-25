@@ -561,7 +561,7 @@ export default function AdminDashboard() {
 
                 {data && (
                     <div className="ad-sidebar__mini-stats">
-                        <p className="ad-sidebar__nav-label">Booking Pulse</p>
+                        <p className="ad-sidebar__nav-label">Booking Metrics</p>
                         {[
                             { label: 'Active',    val: data.bookingStats.active,    cls: 'active'    },
                             { label: 'Pending',   val: data.bookingStats.pending,   cls: 'pending'   },

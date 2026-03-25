@@ -123,12 +123,12 @@ function About() {
                         <Button onClick={() => 
                             window.scrollTo({ top: 0, behavior: 'smooth' }) || 
                             navigate('/fleet')} className="btn-primary-large">
-                            Browse Our Fleet
+                            Our Fleet
                         </Button>
                         <button onClick={() => 
                             window.scrollTo({ top: 0, behavior: 'smooth' }) || 
                             navigate('/contact')} className="btn-outline-white">
-                            Contact Support
+                            Contact
                         </button>
                     </div>
                 </div>

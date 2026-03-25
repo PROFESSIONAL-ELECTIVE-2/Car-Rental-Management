@@ -8,6 +8,7 @@ import nodemailer from 'nodemailer';
 import { setServers } from 'node:dns/promises';
 import crypto from 'node:crypto';
 import rateLimit from 'express-rate-limit';
+import PDFDocument from 'pdfkit';
 import Car from './models/cars.js';
 import Admin from './models/Admin.js';
 
@@ -26,7 +27,7 @@ app.use(cors());
 app.use(express.json());
 
 const generalLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, max: 200,
+    windowMs: 15 * 60 * 1000, max: 500,
     message: { message: 'Too many requests. Please slow down.' },
     standardHeaders: true, legacyHeaders: false,
 });
@@ -98,6 +99,8 @@ td:first-child{font-weight:600;color:#374151;width:38%}
 .rbox{background:#f8fafc;border-left:4px solid ${accent};border-radius:0 8px 8px 0;padding:18px 20px;margin:20px 0;font-size:.92rem;line-height:1.75;white-space:pre-wrap}
 .obox{background:#f1f5f9;border-radius:8px;padding:16px 18px;margin:20px 0;font-size:.85rem;color:#475569}
 .ftr{background:#f9fafb;padding:20px 40px;text-align:center;font-size:.8rem;color:#9ca3af;border-top:1px solid #f1f5f9}
+.attach-note{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px 18px;margin:20px 0;font-size:.88rem;color:#1e40af}
+.attach-note strong{display:block;margin-bottom:4px}
 </style></head><body><div class="wrap">
 <div class="hdr"><h1>${BRAND}</h1><p>${title}</p></div>
 <div class="bdy">${body}</div>
@@ -160,12 +163,263 @@ ${bookingTable(b, t)}<p>Bring a valid ID and your reference number. Drive safely
     };
 }
 
-function buildCompletedEmail(b, t) {
+// ─────────────────────────────────────────────────────────────────────────────
+// PDF RECEIPT GENERATOR
+// Requires: npm install pdfkit
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Generates a professional PDF receipt as a Buffer.
+ * @param {Object} booking  - Mongoose booking document (with populated carId)
+ * @param {string} carTitle - Human-readable vehicle name
+ * @returns {Promise<Buffer>}
+ */
+function generateReceiptPDF(booking, carTitle) {
+    return new Promise((resolve, reject) => {
+        const doc    = new PDFDocument({ size: 'A4', margin: 56, info: { Title: `Receipt - ${BRAND}`, Author: BRAND } });
+        const chunks = [];
+
+        doc.on('data',  chunk => chunks.push(chunk));
+        doc.on('end',   ()    => resolve(Buffer.concat(chunks)));
+        doc.on('error', err   => reject(err));
+
+        const pageW   = doc.page.width;
+        const pageH   = doc.page.height;
+        const margin  = 56;
+        const contentW = pageW - margin * 2;
+        const refNo   = `#${String(booking._id).slice(-8).toUpperCase()}`;
+        const issuedOn = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+
+        // ── COLOUR PALETTE ───────────────────────────────────────────────────
+        const C = {
+            brand:      '#1e3a5f',   // deep navy
+            accent:     '#2563eb',   // blue
+            green:      '#065f46',   // dark green for totals
+            greenBg:    '#f0fdf4',
+            lightBg:    '#f8fafc',
+            border:     '#e2e8f0',
+            text:       '#111827',
+            muted:      '#6b7280',
+            white:      '#ffffff',
+        };
+
+        // ── HELPER: hex → RGB array ──────────────────────────────────────────
+        function hex(h) {
+            const r = parseInt(h.slice(1,3),16);
+            const g = parseInt(h.slice(3,5),16);
+            const b = parseInt(h.slice(5,7),16);
+            return [r, g, b];
+        }
+
+        // ── HEADER BAND ──────────────────────────────────────────────────────
+        doc.rect(0, 0, pageW, 130).fill(C.brand);
+
+        // Brand name
+        doc.fontSize(22).font('Helvetica-Bold').fillColor(C.white)
+           .text(BRAND, margin, 36, { width: contentW - 140 });
+
+        // RECEIPT badge (top-right)
+        doc.roundedRect(pageW - margin - 110, 32, 110, 32, 6)
+           .fillAndStroke('#ffffff22', C.white);
+        doc.fontSize(13).font('Helvetica-Bold').fillColor(C.white)
+           .text('RECEIPT', pageW - margin - 110, 40, { width: 110, align: 'center' });
+
+        // Tagline
+        doc.fontSize(10).font('Helvetica').fillColor('#93c5fd')
+           .text('Official Rental Receipt — keep this for your records', margin, 68);
+
+        // Issued / Reference row inside header
+        doc.fontSize(9).fillColor('#bfdbfe')
+           .text(`Reference: ${refNo}`, margin, 94)
+           .text(`Issued: ${issuedOn}`, margin + 200, 94);
+
+        let y = 154; // Start of content below header
+
+        // ── CUSTOMER INFO BOX ────────────────────────────────────────────────
+        doc.roundedRect(margin, y, contentW, 64, 8)
+           .fill(C.lightBg);
+
+        doc.fontSize(8).font('Helvetica-Bold').fillColor(C.muted)
+           .text('BILLED TO', margin + 16, y + 10);
+        doc.fontSize(12).font('Helvetica-Bold').fillColor(C.text)
+           .text(booking.customerName, margin + 16, y + 22);
+
+        const contactParts = [];
+        if (booking.customerEmail) contactParts.push(booking.customerEmail);
+        if (booking.customerPhone) contactParts.push(booking.customerPhone);
+        doc.fontSize(9).font('Helvetica').fillColor(C.muted)
+           .text(contactParts.join('  ·  '), margin + 16, y + 40);
+
+        // Payment badge (right side of customer box)
+        const paid   = booking.paymentStatus === 'Paid';
+        const badgeW = 90, badgeH = 28;
+        const badgeX = margin + contentW - badgeW - 16;
+        const badgeY = y + 18;
+        const badgeColor = paid ? '#16a34a' : booking.paymentStatus === 'Partially Paid' ? '#d97706' : '#dc2626';
+        doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 14).fill(badgeColor);
+        doc.fontSize(9).font('Helvetica-Bold').fillColor(C.white)
+           .text(booking.paymentStatus.toUpperCase(), badgeX, badgeY + 8, { width: badgeW, align: 'center' });
+
+        y += 84;
+
+        // ── SECTION TITLE ─────────────────────────────────────────────────────
+        doc.fontSize(10).font('Helvetica-Bold').fillColor(C.accent)
+           .text('RENTAL DETAILS', margin, y);
+        doc.moveTo(margin, y + 16).lineTo(margin + contentW, y + 16)
+           .strokeColor(C.border).lineWidth(1).stroke();
+
+        y += 26;
+
+        // ── DETAILS TABLE ─────────────────────────────────────────────────────
+        const col1W = 200;
+        const col2W = contentW - col1W;
+        const rowH  = 34;
+
+        const rows = [
+            ['Vehicle',       carTitle],
+            booking.qty > 1 ? ['Quantity', `${booking.qty} unit(s)`] : null,
+            ['Pickup Date',   fmtDate(booking.startDate)],
+            ['Return Date',   fmtDate(booking.endDate)],
+            ['Rental Days',   `${booking.rentalDays} day${booking.rentalDays !== 1 ? 's' : ''}`],
+            booking.pickupLocation ? ['Pickup Location', booking.pickupLocation] : null,
+            booking.paymentMethod  ? ['Payment Method',  booking.paymentMethod]  : null,
+        ].filter(Boolean);
+
+        rows.forEach((row, i) => {
+            const rowY = y + i * rowH;
+            if (i % 2 === 1) {
+                doc.rect(margin, rowY, contentW, rowH).fill('#f9fafb');
+            }
+            doc.fontSize(9).font('Helvetica-Bold').fillColor(C.muted)
+               .text(row[0].toUpperCase(), margin + 12, rowY + 10, { width: col1W - 12 });
+            doc.fontSize(10).font('Helvetica').fillColor(C.text)
+               .text(row[1], margin + col1W, rowY + 10, { width: col2W - 12 });
+
+            // bottom rule
+            doc.moveTo(margin, rowY + rowH).lineTo(margin + contentW, rowY + rowH)
+               .strokeColor(C.border).lineWidth(0.5).stroke();
+        });
+
+        y += rows.length * rowH + 20;
+
+        // ── PAYMENT SUMMARY BOX ───────────────────────────────────────────────
+        doc.roundedRect(margin, y, contentW, 110, 8)
+           .fill(C.lightBg);
+
+        // Sub-row: Quoted Price
+        const sumLabelX = margin + 20;
+        const sumValX   = margin + contentW - 160;
+        const sumW      = 140;
+
+        doc.fontSize(9).font('Helvetica-Bold').fillColor(C.muted)
+           .text('QUOTED PRICE', sumLabelX, y + 18);
+        doc.fontSize(10).font('Helvetica').fillColor(C.text)
+           .text(fmtPeso(booking.quotedPrice ?? booking.totalCost ?? 0), sumValX, y + 18, { width: sumW, align: 'right' });
+
+        // Divider
+        doc.moveTo(margin + 20, y + 42).lineTo(margin + contentW - 20, y + 42)
+           .strokeColor(C.border).lineWidth(0.5).stroke();
+
+        // Sub-row: Amount Paid
+        doc.fontSize(9).font('Helvetica-Bold').fillColor(C.muted)
+           .text('AMOUNT PAID', sumLabelX, y + 52);
+        doc.fontSize(10).font('Helvetica').fillColor(C.text)
+           .text(fmtPeso(booking.amountPaid ?? 0), sumValX, y + 52, { width: sumW, align: 'right' });
+
+        // Divider
+        doc.moveTo(margin + 20, y + 76).lineTo(margin + contentW - 20, y + 76)
+           .strokeColor(C.border).lineWidth(0.5).stroke();
+
+        // TOTAL row
+        const outstanding = Math.max(0, (booking.quotedPrice ?? 0) - (booking.amountPaid ?? 0));
+        doc.fontSize(9).font('Helvetica-Bold').fillColor(C.green)
+           .text('BALANCE OUTSTANDING', sumLabelX, y + 86);
+        doc.fontSize(11).font('Helvetica-Bold').fillColor(C.green)
+           .text(fmtPeso(outstanding), sumValX, y + 84, { width: sumW, align: 'right' });
+
+        y += 130;
+
+        // ── PAYMENT NOTES ────────────────────────────────────────────────────
+        if (booking.paymentNotes) {
+            doc.roundedRect(margin, y, contentW, 50, 6).fill('#eff6ff');
+            doc.rect(margin, y, 4, 50).fill(C.accent); // left accent bar
+            doc.fontSize(8).font('Helvetica-Bold').fillColor(C.accent)
+               .text('NOTES', margin + 16, y + 10);
+            doc.fontSize(9).font('Helvetica').fillColor(C.text)
+               .text(booking.paymentNotes, margin + 16, y + 24, { width: contentW - 32 });
+            y += 68;
+        }
+
+        // ── COMPLETION STAMP ─────────────────────────────────────────────────
+        const stampX = margin + contentW - 144;
+        const stampY = y;
+        doc.save();
+        doc.rotate(-18, { origin: [stampX + 70, stampY + 35] });
+        doc.roundedRect(stampX, stampY, 140, 70, 8)
+           .fillAndStroke('#f0fdf4', '#16a34a');
+        doc.fontSize(16).font('Helvetica-Bold').fillColor('#16a34a')
+           .text('COMPLETED', stampX, stampY + 12, { width: 140, align: 'center' });
+        doc.fontSize(8).font('Helvetica').fillColor('#065f46')
+           .text(issuedOn, stampX, stampY + 36, { width: 140, align: 'center' });
+        doc.restore();
+
+        y += 90;
+
+        // ── FOOTER ────────────────────────────────────────────────────────────
+        // Thin rule
+        doc.moveTo(margin, pageH - 70).lineTo(pageW - margin, pageH - 70)
+           .strokeColor(C.border).lineWidth(1).stroke();
+
+        doc.fontSize(8).font('Helvetica').fillColor(C.muted)
+           .text(
+               `${BRAND}  ·  This is an official receipt  ·  © ${new Date().getFullYear()}`,
+               margin, pageH - 54, { width: contentW, align: 'center' }
+           );
+        doc.fontSize(7.5).fillColor(C.border)
+           .text(
+               `Generated on ${new Date().toLocaleString('en-PH')}  ·  Ref: ${refNo}`,
+               margin, pageH - 36, { width: contentW, align: 'center' }
+           );
+
+        doc.end();
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPLETED EMAIL — now attaches a PDF receipt
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function buildCompletedEmail(b, t) {
+    const refNo = `#${String(b._id).slice(-8).toUpperCase()}`;
+
+    const html = htmlShell('Rental Completed', `<p>Hi <strong>${b.customerName}</strong>,</p>
+<p>Your rental is now <strong>Completed</strong>. Thank you for choosing <strong>${BRAND}</strong>!</p>
+${bookingTable(b, t)}
+<div class="attach-note">
+  <strong>📄 Official Receipt Attached</strong>
+  A PDF receipt is attached to this email. Please save it for your records and any future reference.
+</div>
+<p>We hope to see you again on your next journey.</p>
+<p>Warm regards,<br/><strong>${BRAND} Team</strong></p>`, '#2563eb');
+
+    // Generate the receipt PDF
+    let pdfBuffer = null;
+    try {
+        pdfBuffer = await generateReceiptPDF(b, t);
+    } catch (err) {
+        console.error('[receipt] PDF generation failed:', err.message);
+    }
+
     return {
         subject: `Rental Completed - Thank You! | ${BRAND}`,
-        html: htmlShell('Rental Completed', `<p>Hi <strong>${b.customerName}</strong>,</p>
-<p>Your rental is now <strong>Completed</strong>. Thank you for choosing us!</p>
-${bookingTable(b, t)}<p>We hope to see you again on your next journey.</p>`, '#2563eb'),
+        html,
+        attachments: pdfBuffer
+            ? [{
+                filename: `Receipt-${refNo.replace('#', '')}.pdf`,
+                content:  pdfBuffer,
+                contentType: 'application/pdf',
+            }]
+            : [],
     };
 }
 
@@ -181,11 +435,21 @@ function buildReplyEmail(msg, replySubject, replyBody) {
     };
 }
 
-async function sendEmail(to, subject, html) {
+// ─────────────────────────────────────────────────────────────────────────────
+// sendEmail — now accepts optional attachments array
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function sendEmail(to, subject, html, attachments = []) {
     if (!to || !process.env.EMAIL_USER) return;
     try {
-        await transporter.sendMail({ from: `"${BRAND}" <${process.env.EMAIL_USER}>`, to, subject, html });
-        console.log(`Email -> ${to}`);
+        await transporter.sendMail({
+            from: `"${BRAND}" <${process.env.EMAIL_USER}>`,
+            to,
+            subject,
+            html,
+            attachments,
+        });
+        console.log(`Email -> ${to}${attachments.length ? ` (+${attachments.length} attachment(s))` : ''}`);
     } catch (e) { console.error('Email error:', e.message); }
 }
 
@@ -264,11 +528,10 @@ function hashToken(raw) {
 
 mongoose.connect(mongoURI)
     .then(() => {
-        console.log('--- Database Info ---');
+        console.log('Database Connected');
         console.log('MongoDB Connected:', mongoose.connection.name);
         console.log('Admins collection:', Admin.collection.name);
         console.log('Bookings collection:', Booking.collection.name);
-        console.log('---------------------');
     })
     .catch(err => console.error('MongoDB Error:', err));
 
@@ -406,19 +669,17 @@ app.post('/api/admin/forgot-password', loginLimiter, async (req, res) => {
     const email = raw_email.trim().toLowerCase();
  
     if (!emailRegex.test(email)) {
-        // Generic response — don't reveal the email is invalid
         return res.json({ message: 'If that email is registered, a reset link has been sent.' });
     }
  
     try {
-        
         const escaped = escapeRegex(email);
         const admin = await Admin.findOne({
-        $or: [
-        { email: { $regex: new RegExp(`^${escaped}$`, 'i') } },
-        { username: { $regex: new RegExp(`^${escaped}$`, 'i') } }
-        ]
-});
+            $or: [
+                { email: { $regex: new RegExp(`^${escaped}$`, 'i') } },
+                { username: { $regex: new RegExp(`^${escaped}$`, 'i') } }
+            ]
+        });
  
         if (!admin) {
             console.log(`[forgot-password] no account for ${email} — silent no-op`);
@@ -427,7 +688,7 @@ app.post('/api/admin/forgot-password', loginLimiter, async (req, res) => {
  
         const rawToken    = crypto.randomBytes(32).toString('hex');
         const hashedToken = hashToken(rawToken);
-        const expiry      = new Date(Date.now() + 60 * 60 * 1000); 
+        const expiry      = new Date(Date.now() + 60 * 60 * 1000);
         admin.resetToken       = hashedToken;
         admin.resetTokenExpiry = expiry;
         await admin.save();
@@ -479,7 +740,7 @@ app.post('/api/admin/reset-password', async (req, res) => {
  
         const admin = await Admin.findOne({
             resetToken:       hashedToken,
-            resetTokenExpiry: { $gt: new Date() }, 
+            resetTokenExpiry: { $gt: new Date() },
         });
  
         if (!admin) {
@@ -532,8 +793,15 @@ app.put('/api/admin/bookings/:id/status', requireAdmin, async (req, res) => {
         console.log(`Booking ${booking._id} -> ${status}`);
         if (booking.customerEmail) {
             const carTitle = populated.carId?.title || car?.title || 'your vehicle';
-            if (status === 'Active') { const { subject, html } = buildActiveEmail(booking, carTitle); sendEmail(booking.customerEmail, subject, html); }
-            else if (status === 'Completed') { const { subject, html } = buildCompletedEmail(booking, carTitle); sendEmail(booking.customerEmail, subject, html); }
+            if (status === 'Active') {
+                const { subject, html } = buildActiveEmail(booking, carTitle);
+                sendEmail(booking.customerEmail, subject, html);
+            } else if (status === 'Completed') {
+                // buildCompletedEmail is async — generates the PDF receipt
+                buildCompletedEmail(booking, carTitle).then(({ subject, html, attachments }) => {
+                    sendEmail(booking.customerEmail, subject, html, attachments);
+                }).catch(err => console.error('[completed email] failed:', err.message));
+            }
         }
         res.json({ message: 'Status updated.', booking: populated });
     } catch (err) { await session.abortTransaction(); session.endSession(); console.error('Status error:', err); res.status(500).json({ message: 'Server Error.' }); }

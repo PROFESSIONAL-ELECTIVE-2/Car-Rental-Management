@@ -62,9 +62,9 @@ function Home() {
             }));
             setSelectedCar(null);
             const refs = result.bookings?.map(b => b._id).join(', ') ?? 'N/A';
-            alert(`✅ Booking confirmed!\nReference IDs: ${refs}`);
+            alert(`Booking confirmed!\nReference IDs: ${refs}`);
         } catch (err) {
-            alert(`❌ ${err.message}`);
+            alert(` ${err.message}`);
         }
     };
 
@@ -116,9 +116,7 @@ function Home() {
                             Experience the best car rental service with a wide range of vehicles to choose from.
                         </p>
                         <div className="hero-cta">
-                            <Button onClick={() => 
-                                window.scrollTo({ top: 0, behavior: 'smooth' }) || 
-                                navigate('/fleet')}>
+                            <Button onClick={() => navigate('/fleet')}>
                                 View All Vehicles
                             </Button>
                             <button
@@ -184,11 +182,8 @@ function Home() {
 
                 {!loading && !error && (
                     <div style={{ textAlign: 'center', marginTop: '4rem' }}>
-                        <button 
-                            onClick={() => 
-                                window.scrollTo({ top: 0, behavior: 'smooth' }) ||
-                                navigate('/fleet')
-                            }
+                        <button
+                            onClick={() => navigate('/fleet')}
                             style={{
                                 background: 'transparent',
                                 border: '2px solid #375d97',

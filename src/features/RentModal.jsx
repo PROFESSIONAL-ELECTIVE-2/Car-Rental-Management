@@ -408,7 +408,7 @@ function RentModal({ car, allCars = [], onClose, onConfirm }) {
                 startDate:      new Date(item.pickupDate).toISOString(),
                 endDate:        (() => {
                     const d = new Date(item.pickupDate);
-                    d.setDate(d.getDate() + item.rentalDays - 1);
+                    d.setDate(d.getDate() + item.rentalDays);
                     return d.toISOString();
                 })(),
                 rentalDays:     item.rentalDays,
@@ -494,8 +494,18 @@ function RentModal({ car, allCars = [], onClose, onConfirm }) {
                                 <label>Phone Number</label>
                                 <input type="tel" required placeholder="0912 345 6789"
                                     value={customer.phone}
-                                    onChange={e => setCustomer(p => ({ ...p, phone: e.target.value }))}
+                                    onChange={e => {
+                                        const raw = e.target.value.replace(/\D/g, '').slice(0, 11);
+                                        setCustomer(p => ({ ...p, phone: raw }));
+                                    }}
+                                    pattern="^(09\d{9}|(\+63)9\d{9})$"
+                                    title="Enter a valid Philippine mobile number (e.g. 09123456789)"
                                     disabled={submitting} />
+                                {customer.phone.length > 0 && !/^09\d{9}$/.test(customer.phone) && (
+                                    <span className="field-error">
+                                        Must be 11 digits starting with 09 (e.g. 09123456789)
+                                    </span>
+                                )}
                             </div>
 
                             <div className="form-group">

@@ -69,11 +69,11 @@ function Rent() {
             setSelectedCar(null);
 
             const refs = result.bookings?.map(b => b._id).join(', ') ?? 'N/A';
-            alert(`✅ Booking confirmed!\nReference IDs: ${refs}`);
+            alert(`Booking confirmed!\nReference IDs: ${refs}`);
 
         } catch (err) {
             console.error('Booking error:', err);
-            alert(`❌ ${err.message}`);
+            alert(` ${err.message}`);
         }
     };
 

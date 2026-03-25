@@ -12,7 +12,7 @@ function Footer() {
             <div className="footer-top-bar" />
             <div className="footer-content">
                 <div className="footer-section brand-section">
-                    <Link to="/" className="footer-brand-logo" onClick={scrollTop}>
+                    <Link to="/" className="footer-brand-logo">
                         <img src={Logo} alt="Logo" className="logo"/>
                         <img src={LName} alt="Brand Name" className="name"/>
                     </Link>

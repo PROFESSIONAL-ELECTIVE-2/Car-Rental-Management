@@ -31,7 +31,6 @@ export default function ForgotPassword() {
         }
     }
 
-    // ── Success state ─────────────────────────────────────────────────
     if (submitted) {
         return (
             <main className="al-root" aria-label="Email sent confirmation">
@@ -69,7 +68,7 @@ export default function ForgotPassword() {
         );
     }
 
-    // ── Form state ────────────────────────────────────────────────────
+    
     return (
         <main className="al-root" aria-label="Forgot password page">
             <div className="al-bg" aria-hidden="true">
@@ -85,7 +84,7 @@ export default function ForgotPassword() {
                             <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                         </svg>
                     </div>
-                    <p className="al-eyebrow">Triple R and A Car Rental</p>
+                    <p className="al-eyebrow">Triple R and A Transport Services</p>
                     <h1 className="al-title">Forgot Password</h1>
                     <p className="al-subtitle">
                         Enter your admin email and we'll send you a link to reset your password.

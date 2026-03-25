@@ -37,7 +37,7 @@ function Footer() {
             </div>
 
             <div className="footer-bottom">
-                <p>&copy; {new Date().getFullYear()} Triple R and A Car Rental. All rights reserved.</p>
+                <p>&copy; {new Date().getFullYear()} Triple R and A Transport Services. All rights reserved.</p>
                 <div className="footer-bottom-accent">
                     <span /><span /><span />
                 </div>

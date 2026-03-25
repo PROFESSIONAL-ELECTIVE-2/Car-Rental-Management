@@ -212,7 +212,6 @@ function FleetStatus({ fleet, bookingStats }) {
                     {[
                         { label: 'Available',   val: fleet.available,   color: '#ffe08a' },
                         { label: 'Rented',      val: fleet.rented,      color: '#059669' },
-                        { label: 'Maintenance', val: fleet.maintenance, color: '#6b7280' },
                     ].map(item => (
                         <div key={item.label} className="ad-fleet__legend-row">
                             <span className="ad-fleet__dot" style={{ backgroundColor: item.color }} />

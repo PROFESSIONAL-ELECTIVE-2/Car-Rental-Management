@@ -19,7 +19,7 @@ const mongoURI       = process.env.MONGODB_URI        || 'mongodb://localhost:27
 const JWT_SECRET     = process.env.JWT_SECRET         || 'your_fallback_secret_key';
 const URGENCY_URL    = process.env.URGENCY_SERVICE_URL || 'http://localhost:5001';
 const PORT           = process.env.PORT               || 5000;
-const BRAND          = 'Triple R and A Car Rental';
+const BRAND          = 'Triple R and A Transport Services';
 const tokenBlacklist = new Set();
 
 const app = express();
@@ -163,10 +163,6 @@ ${bookingTable(b, t)}<p>Bring a valid ID and your reference number. Drive safely
     };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PDF RECEIPT GENERATOR
-// Requires: npm install pdfkit
-// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Generates a professional PDF receipt as a Buffer.
@@ -176,215 +172,279 @@ ${bookingTable(b, t)}<p>Bring a valid ID and your reference number. Drive safely
  */
 function generateReceiptPDF(booking, carTitle) {
     return new Promise((resolve, reject) => {
-        const doc    = new PDFDocument({ size: 'A4', margin: 56, info: { Title: `Receipt - ${BRAND}`, Author: BRAND } });
+        const doc    = new PDFDocument({ size: 'A4', margin: 0, info: { Title: `Receipt - ${BRAND}`, Author: BRAND } });
         const chunks = [];
-
+ 
         doc.on('data',  chunk => chunks.push(chunk));
         doc.on('end',   ()    => resolve(Buffer.concat(chunks)));
         doc.on('error', err   => reject(err));
-
-        const pageW   = doc.page.width;
-        const pageH   = doc.page.height;
+ 
+        const pageW   = doc.page.width;   // 595.28
+        const pageH   = doc.page.height;  // 841.89
         const margin  = 56;
         const contentW = pageW - margin * 2;
-        const refNo   = `#${String(booking._id).slice(-8).toUpperCase()}`;
+ 
+        const refNo    = `#${String(booking._id).slice(-8).toUpperCase()}`;
         const issuedOn = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
-
-        // ── COLOUR PALETTE ───────────────────────────────────────────────────
+ 
+        // ── COLOUR PALETTE ────────────────────────────────────────────────────
         const C = {
-            brand:      '#1e3a5f',   // deep navy
-            accent:     '#2563eb',   // blue
-            green:      '#065f46',   // dark green for totals
-            greenBg:    '#f0fdf4',
-            lightBg:    '#f8fafc',
-            border:     '#e2e8f0',
-            text:       '#111827',
-            muted:      '#6b7280',
+            navy:       '#0f2340',
+            navyLight:  '#1a3a5c',
+            accent:     '#1d4ed8',
+            accentMid:  '#3b82f6',
+            gold:       '#b08d57',
+            goldLight:  '#d4af7a',
+            green:      '#14532d',
+            greenLight: '#166534',
+            slate:      '#334155',
+            muted:      '#64748b',
+            hairline:   '#cbd5e1',
+            offwhite:   '#f8fafc',
             white:      '#ffffff',
+            black:      '#0a0a0a',
+            redBadge:   '#991b1b',
+            amberBadge: '#92400e',
         };
-
-        // ── HELPER: hex → RGB array ──────────────────────────────────────────
+ 
         function hex(h) {
-            const r = parseInt(h.slice(1,3),16);
-            const g = parseInt(h.slice(3,5),16);
-            const b = parseInt(h.slice(5,7),16);
-            return [r, g, b];
+            return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
         }
-
-        // ── HEADER BAND ──────────────────────────────────────────────────────
-        doc.rect(0, 0, pageW, 130).fill(C.brand);
-
-        // Brand name
-        doc.fontSize(22).font('Helvetica-Bold').fillColor(C.white)
-           .text(BRAND, margin, 36, { width: contentW - 140 });
-
-        // RECEIPT badge (top-right)
-        doc.roundedRect(pageW - margin - 110, 32, 110, 32, 6)
-           .fillAndStroke('#ffffff22', C.white);
-        doc.fontSize(13).font('Helvetica-Bold').fillColor(C.white)
-           .text('RECEIPT', pageW - margin - 110, 40, { width: 110, align: 'center' });
-
+        function fillHex(h)   { doc.fillColor(h); }
+        function strokeHex(h) { doc.strokeColor(h); }
+ 
+        // ── HEADER ────────────────────────────────────────────────────────────
+        // Dark navy bar
+        doc.rect(0, 0, pageW, 110).fill(C.navy);
+ 
+        // Gold top accent rule (3 px)
+        doc.rect(0, 0, pageW, 3).fill(C.gold);
+ 
+        // Brand name (left)
+        doc.fontSize(18).font('Helvetica-Bold').fillColor(C.white)
+           .text(BRAND, margin, 26, { width: contentW * 0.62 });
+ 
+        // "OFFICIAL RECEIPT" label top-right
+        doc.fontSize(8).font('Helvetica-Bold').fillColor(C.goldLight)
+           .text('OFFICIAL RECEIPT', pageW - margin - 130, 26, { width: 130, align: 'right', characterSpacing: 1.5 });
+ 
+        // Ref + Date beneath label
+        doc.fontSize(8.5).font('Helvetica').fillColor('#93c5fd')
+           .text(`Ref: ${refNo}`, pageW - margin - 130, 42, { width: 130, align: 'right' });
+        doc.fontSize(8.5).fillColor('#93c5fd')
+           .text(`Issued: ${issuedOn}`, pageW - margin - 130, 56, { width: 130, align: 'right' });
+ 
+        // Gold divider in header
+        doc.moveTo(margin, 82).lineTo(pageW - margin, 82)
+           .strokeColor(C.gold).lineWidth(0.5).stroke();
+ 
         // Tagline
-        doc.fontSize(10).font('Helvetica').fillColor('#93c5fd')
-           .text('Official Rental Receipt — keep this for your records', margin, 68);
-
-        // Issued / Reference row inside header
-        doc.fontSize(9).fillColor('#bfdbfe')
-           .text(`Reference: ${refNo}`, margin, 94)
-           .text(`Issued: ${issuedOn}`, margin + 200, 94);
-
-        let y = 154; // Start of content below header
-
-        // ── CUSTOMER INFO BOX ────────────────────────────────────────────────
-        doc.roundedRect(margin, y, contentW, 64, 8)
-           .fill(C.lightBg);
-
-        doc.fontSize(8).font('Helvetica-Bold').fillColor(C.muted)
-           .text('BILLED TO', margin + 16, y + 10);
-        doc.fontSize(12).font('Helvetica-Bold').fillColor(C.text)
-           .text(booking.customerName, margin + 16, y + 22);
-
+        doc.fontSize(8).font('Helvetica').fillColor('#7dd3fc')
+           .text('Triple R and A Transport Services  ·  Official Rental Receipt  ·  Please retain for your records',
+                 margin, 90, { width: contentW });
+ 
+        // ── BILL-TO / RECEIPT META ROW ────────────────────────────────────────
+        let y = 128;
+ 
+        // Two-column row: Bill To (left) | Receipt details (right)
+        const colW = contentW / 2 - 12;
+ 
+        // Left: Bill To
+        doc.fontSize(7).font('Helvetica-Bold').fillColor(C.gold)
+           .text('BILL TO', margin, y, { characterSpacing: 1.2 });
+        y += 13;
+        doc.fontSize(12).font('Helvetica-Bold').fillColor(C.black)
+           .text(booking.customerName, margin, y, { width: colW });
+ 
         const contactParts = [];
         if (booking.customerEmail) contactParts.push(booking.customerEmail);
         if (booking.customerPhone) contactParts.push(booking.customerPhone);
-        doc.fontSize(9).font('Helvetica').fillColor(C.muted)
-           .text(contactParts.join('  ·  '), margin + 16, y + 40);
-
-        // Payment badge (right side of customer box)
-        const paid   = booking.paymentStatus === 'Paid';
-        const badgeW = 90, badgeH = 28;
-        const badgeX = margin + contentW - badgeW - 16;
-        const badgeY = y + 18;
-        const badgeColor = paid ? '#16a34a' : booking.paymentStatus === 'Partially Paid' ? '#d97706' : '#dc2626';
-        doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 14).fill(badgeColor);
-        doc.fontSize(9).font('Helvetica-Bold').fillColor(C.white)
-           .text(booking.paymentStatus.toUpperCase(), badgeX, badgeY + 8, { width: badgeW, align: 'center' });
-
-        y += 84;
-
-        // ── SECTION TITLE ─────────────────────────────────────────────────────
-        doc.fontSize(10).font('Helvetica-Bold').fillColor(C.accent)
-           .text('RENTAL DETAILS', margin, y);
-        doc.moveTo(margin, y + 16).lineTo(margin + contentW, y + 16)
-           .strokeColor(C.border).lineWidth(1).stroke();
-
-        y += 26;
-
-        // ── DETAILS TABLE ─────────────────────────────────────────────────────
-        const col1W = 200;
-        const col2W = contentW - col1W;
-        const rowH  = 34;
-
-        const rows = [
-            ['Vehicle',       carTitle],
-            booking.qty > 1 ? ['Quantity', `${booking.qty} unit(s)`] : null,
-            ['Pickup Date',   fmtDate(booking.startDate)],
-            ['Return Date',   fmtDate(booking.endDate)],
-            ['Rental Days',   `${booking.rentalDays} day${booking.rentalDays !== 1 ? 's' : ''}`],
-            booking.pickupLocation ? ['Pickup Location', booking.pickupLocation] : null,
-            booking.paymentMethod  ? ['Payment Method',  booking.paymentMethod]  : null,
-        ].filter(Boolean);
-
-        rows.forEach((row, i) => {
-            const rowY = y + i * rowH;
-            if (i % 2 === 1) {
-                doc.rect(margin, rowY, contentW, rowH).fill('#f9fafb');
-            }
-            doc.fontSize(9).font('Helvetica-Bold').fillColor(C.muted)
-               .text(row[0].toUpperCase(), margin + 12, rowY + 10, { width: col1W - 12 });
-            doc.fontSize(10).font('Helvetica').fillColor(C.text)
-               .text(row[1], margin + col1W, rowY + 10, { width: col2W - 12 });
-
-            // bottom rule
-            doc.moveTo(margin, rowY + rowH).lineTo(margin + contentW, rowY + rowH)
-               .strokeColor(C.border).lineWidth(0.5).stroke();
-        });
-
-        y += rows.length * rowH + 20;
-
-        // ── PAYMENT SUMMARY BOX ───────────────────────────────────────────────
-        doc.roundedRect(margin, y, contentW, 110, 8)
-           .fill(C.lightBg);
-
-        // Sub-row: Quoted Price
-        const sumLabelX = margin + 20;
-        const sumValX   = margin + contentW - 160;
-        const sumW      = 140;
-
-        doc.fontSize(9).font('Helvetica-Bold').fillColor(C.muted)
-           .text('QUOTED PRICE', sumLabelX, y + 18);
-        doc.fontSize(10).font('Helvetica').fillColor(C.text)
-           .text(fmtPeso(booking.quotedPrice ?? booking.totalCost ?? 0), sumValX, y + 18, { width: sumW, align: 'right' });
-
-        // Divider
-        doc.moveTo(margin + 20, y + 42).lineTo(margin + contentW - 20, y + 42)
-           .strokeColor(C.border).lineWidth(0.5).stroke();
-
-        // Sub-row: Amount Paid
-        doc.fontSize(9).font('Helvetica-Bold').fillColor(C.muted)
-           .text('AMOUNT PAID', sumLabelX, y + 52);
-        doc.fontSize(10).font('Helvetica').fillColor(C.text)
-           .text(fmtPeso(booking.amountPaid ?? 0), sumValX, y + 52, { width: sumW, align: 'right' });
-
-        // Divider
-        doc.moveTo(margin + 20, y + 76).lineTo(margin + contentW - 20, y + 76)
-           .strokeColor(C.border).lineWidth(0.5).stroke();
-
-        // TOTAL row
-        const outstanding = Math.max(0, (booking.quotedPrice ?? 0) - (booking.amountPaid ?? 0));
-        doc.fontSize(9).font('Helvetica-Bold').fillColor(C.green)
-           .text('BALANCE OUTSTANDING', sumLabelX, y + 86);
-        doc.fontSize(11).font('Helvetica-Bold').fillColor(C.green)
-           .text(fmtPeso(outstanding), sumValX, y + 84, { width: sumW, align: 'right' });
-
-        y += 130;
-
-        // ── PAYMENT NOTES ────────────────────────────────────────────────────
-        if (booking.paymentNotes) {
-            doc.roundedRect(margin, y, contentW, 50, 6).fill('#eff6ff');
-            doc.rect(margin, y, 4, 50).fill(C.accent); // left accent bar
-            doc.fontSize(8).font('Helvetica-Bold').fillColor(C.accent)
-               .text('NOTES', margin + 16, y + 10);
-            doc.fontSize(9).font('Helvetica').fillColor(C.text)
-               .text(booking.paymentNotes, margin + 16, y + 24, { width: contentW - 32 });
-            y += 68;
+        if (contactParts.length) {
+            doc.fontSize(8.5).font('Helvetica').fillColor(C.muted)
+               .text(contactParts.join('   ·   '), margin, y + 18, { width: colW });
         }
-
-        // ── COMPLETION STAMP ─────────────────────────────────────────────────
-        const stampX = margin + contentW - 144;
-        const stampY = y;
-        doc.save();
-        doc.rotate(-18, { origin: [stampX + 70, stampY + 35] });
-        doc.roundedRect(stampX, stampY, 140, 70, 8)
-           .fillAndStroke('#f0fdf4', '#16a34a');
-        doc.fontSize(16).font('Helvetica-Bold').fillColor('#16a34a')
-           .text('COMPLETED', stampX, stampY + 12, { width: 140, align: 'center' });
-        doc.fontSize(8).font('Helvetica').fillColor('#065f46')
-           .text(issuedOn, stampX, stampY + 36, { width: 140, align: 'center' });
-        doc.restore();
-
-        y += 90;
-
+ 
+        // Right: Receipt meta
+        const rightX = margin + colW + 24;
+        const labelColW = 90, valColW = colW - labelColW;
+ 
+        const metaRows = [
+            ['Receipt No.',  refNo],
+            ['Issue Date',   issuedOn],
+            ['Status',       booking.status],
+            ['Payment',      booking.paymentStatus],
+        ];
+ 
+        let metaY = y - 13;
+        for (const [label, val] of metaRows) {
+            doc.fontSize(7.5).font('Helvetica-Bold').fillColor(C.muted)
+               .text(label, rightX, metaY, { width: labelColW });
+            doc.fontSize(7.5).font('Helvetica').fillColor(C.slate)
+               .text(val, rightX + labelColW, metaY, { width: valColW, align: 'right' });
+            metaY += 14;
+        }
+ 
+        y += 40;
+ 
+        // Full-width hairline separator
+        doc.moveTo(margin, y).lineTo(pageW - margin, y)
+           .strokeColor(C.hairline).lineWidth(0.75).stroke();
+ 
+        y += 16;
+ 
+        // ── SECTION: RENTAL DETAILS ───────────────────────────────────────────
+        // Section heading with left accent bar
+        doc.rect(margin, y, 3, 12).fill(C.accent);
+        doc.fontSize(8).font('Helvetica-Bold').fillColor(C.accent)
+           .text('RENTAL DETAILS', margin + 10, y + 1, { characterSpacing: 1.1 });
+        y += 22;
+ 
+        // Table header row
+        const col1 = margin;
+        const col2 = margin + 210;
+        const rowH  = 28;
+ 
+        doc.rect(col1, y, contentW, rowH - 2).fill(C.navy);
+        doc.fontSize(7.5).font('Helvetica-Bold').fillColor(C.white)
+           .text('DESCRIPTION', col1 + 12, y + 9, { characterSpacing: 0.8 });
+        doc.fontSize(7.5).font('Helvetica-Bold').fillColor(C.white)
+           .text('DETAILS', col2, y + 9, { characterSpacing: 0.8 });
+        y += rowH;
+ 
+        const detailRows = [
+            ['Vehicle',        carTitle],
+            ...(booking.qty > 1 ? [['Quantity', `${booking.qty} unit(s)`]] : []),
+            ['Pickup Date',    fmtDate(booking.startDate)],
+            ['Return Date',    fmtDate(booking.endDate)],
+            ['Duration',       `${booking.rentalDays} day${booking.rentalDays !== 1 ? 's' : ''}`],
+            ...(booking.pickupLocation ? [['Pickup Location', booking.pickupLocation]] : []),
+            ...(booking.paymentMethod  ? [['Payment Method',  booking.paymentMethod]]  : []),
+        ];
+ 
+        detailRows.forEach((row, i) => {
+            const rowY = y + i * rowH;
+            // Alternating row shade
+            if (i % 2 === 0) {
+                doc.rect(col1, rowY, contentW, rowH - 1).fill(C.offwhite);
+            } else {
+                doc.rect(col1, rowY, contentW, rowH - 1).fill(C.white);
+            }
+            // Left label
+            doc.fontSize(8.5).font('Helvetica-Bold').fillColor(C.slate)
+               .text(row[0], col1 + 12, rowY + 9, { width: 190 });
+            // Right value
+            doc.fontSize(8.5).font('Helvetica').fillColor(C.black)
+               .text(row[1], col2, rowY + 9, { width: contentW - (col2 - col1) - 12 });
+            // Bottom hairline
+            doc.moveTo(col1, rowY + rowH - 1).lineTo(col1 + contentW, rowY + rowH - 1)
+               .strokeColor(C.hairline).lineWidth(0.4).stroke();
+        });
+ 
+        y += detailRows.length * rowH + 20;
+ 
+        // ── SECTION: PAYMENT SUMMARY ──────────────────────────────────────────
+        doc.rect(margin, y, 3, 12).fill(C.accent);
+        doc.fontSize(8).font('Helvetica-Bold').fillColor(C.accent)
+           .text('PAYMENT SUMMARY', margin + 10, y + 1, { characterSpacing: 1.1 });
+        y += 22;
+ 
+        // Summary table — right-aligned values
+        const summaryLabelX = margin;
+        const summaryValX   = margin + contentW - 160;
+        const summaryValW   = 150;
+        const sumRowH       = 26;
+ 
+        const outstanding = Math.max(0, (booking.quotedPrice ?? 0) - (booking.amountPaid ?? 0));
+ 
+        const summaryRows = [
+            { label: 'Quoted Price',        val: fmtPeso(booking.quotedPrice ?? 0), bold: false },
+            { label: 'Amount Paid',         val: fmtPeso(booking.amountPaid ?? 0),  bold: false },
+        ];
+ 
+        summaryRows.forEach((row, i) => {
+            const rowY = y + i * sumRowH;
+            if (i % 2 === 0) doc.rect(margin, rowY, contentW, sumRowH - 1).fill(C.offwhite);
+            else             doc.rect(margin, rowY, contentW, sumRowH - 1).fill(C.white);
+ 
+            doc.fontSize(8.5).font(row.bold ? 'Helvetica-Bold' : 'Helvetica').fillColor(C.slate)
+               .text(row.label, summaryLabelX + 12, rowY + 8, { width: 200 });
+            doc.fontSize(8.5).font(row.bold ? 'Helvetica-Bold' : 'Helvetica').fillColor(C.black)
+               .text(row.val, summaryValX, rowY + 8, { width: summaryValW, align: 'right' });
+ 
+            doc.moveTo(margin, rowY + sumRowH - 1).lineTo(margin + contentW, rowY + sumRowH - 1)
+               .strokeColor(C.hairline).lineWidth(0.4).stroke();
+        });
+ 
+        y += summaryRows.length * sumRowH;
+ 
+        // BALANCE OUTSTANDING — highlighted row
+        const balColor = outstanding === 0 ? C.green : C.navy;
+        doc.rect(margin, y, contentW, sumRowH + 4).fill(balColor);
+        doc.fontSize(9).font('Helvetica-Bold').fillColor(C.white)
+           .text('BALANCE OUTSTANDING', summaryLabelX + 12, y + 9, { width: 200 });
+        doc.fontSize(9).font('Helvetica-Bold').fillColor(outstanding === 0 ? '#86efac' : C.goldLight)
+           .text(fmtPeso(outstanding), summaryValX, y + 9, { width: summaryValW, align: 'right' });
+        y += sumRowH + 4 + 18;
+ 
+        // ── PAYMENT NOTES ─────────────────────────────────────────────────────
+        if (booking.paymentNotes) {
+            doc.rect(margin, y, contentW, 44).fill(C.offwhite);
+            doc.rect(margin, y, 3, 44).fill(C.accentMid);
+            doc.fontSize(7).font('Helvetica-Bold').fillColor(C.accent)
+               .text('NOTES', margin + 12, y + 8, { characterSpacing: 1 });
+            doc.fontSize(8.5).font('Helvetica').fillColor(C.slate)
+               .text(booking.paymentNotes, margin + 12, y + 20, { width: contentW - 24 });
+            y += 60;
+        }
+ 
+        // ── SIGNATURE / AUTHORISATION BLOCK ──────────────────────────────────
+        // Formal sign-off with dotted lines
+        const sigY = Math.max(y + 20, pageH - 170);
+ 
+        doc.moveTo(margin, sigY).lineTo(pageW - margin, sigY)
+           .strokeColor(C.hairline).lineWidth(0.75).stroke();
+ 
+        const sigColW = (contentW - 40) / 2;
+ 
+        // Left: Prepared by
+        doc.fontSize(7).font('Helvetica-Bold').fillColor(C.muted)
+           .text('PREPARED BY', margin, sigY + 14, { characterSpacing: 1 });
+        doc.moveTo(margin, sigY + 46).lineTo(margin + sigColW, sigY + 46)
+           .strokeColor(C.slate).lineWidth(0.6).stroke();
+        doc.fontSize(7.5).font('Helvetica').fillColor(C.slate)
+           .text('Authorised Signature', margin, sigY + 50);
+ 
+        // Right: Received by
+        const sig2X = margin + sigColW + 40;
+        doc.fontSize(7).font('Helvetica-Bold').fillColor(C.muted)
+           .text('RECEIVED BY', sig2X, sigY + 14, { characterSpacing: 1 });
+        doc.moveTo(sig2X, sigY + 46).lineTo(sig2X + sigColW, sigY + 46)
+           .strokeColor(C.slate).lineWidth(0.6).stroke();
+        doc.fontSize(7.5).font('Helvetica').fillColor(C.slate)
+           .text('Customer Signature & Date', sig2X, sigY + 50);
+ 
         // ── FOOTER ────────────────────────────────────────────────────────────
-        // Thin rule
-        doc.moveTo(margin, pageH - 70).lineTo(pageW - margin, pageH - 70)
-           .strokeColor(C.border).lineWidth(1).stroke();
-
-        doc.fontSize(8).font('Helvetica').fillColor(C.muted)
-           .text(
-               `${BRAND}  ·  This is an official receipt  ·  © ${new Date().getFullYear()}`,
-               margin, pageH - 54, { width: contentW, align: 'center' }
-           );
-        doc.fontSize(7.5).fillColor(C.border)
-           .text(
-               `Generated on ${new Date().toLocaleString('en-PH')}  ·  Ref: ${refNo}`,
-               margin, pageH - 36, { width: contentW, align: 'center' }
-           );
-
+        // Navy footer bar
+        doc.rect(0, pageH - 52, pageW, 52).fill(C.navy);
+        // Gold top rule
+        doc.rect(0, pageH - 52, pageW, 2).fill(C.gold);
+ 
+        doc.fontSize(7.5).font('Helvetica-Bold').fillColor(C.white)
+           .text(BRAND, margin, pageH - 38, { width: contentW * 0.6 });
+        doc.fontSize(7).font('Helvetica').fillColor('#94a3b8')
+           .text('This is an official receipt. Please keep it for your records.',
+                 margin, pageH - 24, { width: contentW * 0.65 });
+ 
+        // Right side of footer: ref + generated timestamp
+        doc.fontSize(7).font('Helvetica').fillColor('#94a3b8')
+           .text(`Ref: ${refNo}`, pageW - margin - 180, pageH - 38, { width: 180, align: 'right' });
+        doc.fontSize(7).fillColor('#64748b')
+           .text(`Generated: ${new Date().toLocaleString('en-PH')}`,
+                 pageW - margin - 180, pageH - 24, { width: 180, align: 'right' });
+ 
         doc.end();
     });
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPLETED EMAIL — now attaches a PDF receipt
 // ─────────────────────────────────────────────────────────────────────────────
@@ -781,6 +841,18 @@ app.put('/api/admin/bookings/:id/status', requireAdmin, async (req, res) => {
     try {
         const booking = await Booking.findById(req.params.id).session(session);
         if (!booking) { await session.abortTransaction(); session.endSession(); return res.status(404).json({ message: 'Booking not found.' }); }
+
+        // ── PAYMENT GATE ──────────────────────────────────────────────────────
+        if (status === 'Active' && booking.paymentStatus === 'Unpaid') {
+            await session.abortTransaction(); session.endSession();
+            return res.status(400).json({ message: 'Booking cannot be marked Active until at least a partial payment has been recorded.' });
+        }
+        if (status === 'Completed' && booking.paymentStatus !== 'Paid') {
+            await session.abortTransaction(); session.endSession();
+            return res.status(400).json({ message: 'Booking cannot be marked Completed until it is fully paid.' });
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         let car = null;
         if (terminal.includes(status) && !terminal.includes(booking.status)) {
             car = await Car.findById(booking.carId).session(session);

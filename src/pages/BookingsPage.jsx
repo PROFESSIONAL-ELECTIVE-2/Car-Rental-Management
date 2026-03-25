@@ -3,6 +3,7 @@ import './Adminpages.css';
 
 const API_BASE_URL  = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const PER_PAGE      = 10;
+const BRAND = 'Triple R and A Transport Services';
 
 const STATUS_FILTERS = ['All', 'Pending', 'Active', 'Completed', 'Cancelled'];
 
@@ -134,6 +135,9 @@ function PaymentPanel({ booking, onUpdated }) {
     const [saving,      setSaving]      = useState(false);
     const [error,       setError]       = useState('');
 
+    // Check if the booking is finished/cancelled
+    const isLocked = ['Completed', 'Cancelled'].includes(booking.status);
+
     useEffect(() => {
         setQuotedPrice(booking.quotedPrice  || '');
         setQuoteNotes(booking.paymentNotes  || '');
@@ -184,7 +188,6 @@ function PaymentPanel({ booking, onUpdated }) {
         <div className="bp-drawer__section">
             <p className="bp-drawer__label">Payment</p>
 
-        
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
                 <PaymentPill status={booking.paymentStatus || 'Unpaid'} />
                 {booking.quotedPrice && (
@@ -225,42 +228,45 @@ function PaymentPanel({ booking, onUpdated }) {
                 </p>
             )}
 
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                <button onClick={() => { setShowQuote(v => !v); setShowPayment(false); setError(''); }}
-                    style={{
-                        display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
-                        background: showQuote ? '#f1f5f9' : '#1e40af',
-                        color: showQuote ? '#111827' : '#fff',
-                        border: showQuote ? '1.5px solid #e2e8f0' : 'none',
-                        borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem',
-                        fontWeight: 700, fontFamily: 'inherit', transition: 'all 0.15s',
-                    }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                    </svg>
-                    {booking.quotedPrice ? 'Update Quote' : 'Set Quote'}
-                </button>
-
-                {booking.quotedPrice && (
-                    <button onClick={() => { setShowPayment(v => !v); setShowQuote(false); setError(''); }}
+            {/* ACTION BUTTONS: Only show if NOT Locked */}
+            {!isLocked && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                    <button onClick={() => { setShowQuote(v => !v); setShowPayment(false); setError(''); }}
                         style={{
                             display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
-                            background: showPayment ? '#f1f5f9' : '#065f46',
-                            color: showPayment ? '#111827' : '#fff',
-                            border: showPayment ? '1.5px solid #e2e8f0' : 'none',
+                            background: showQuote ? '#f1f5f9' : '#1e40af',
+                            color: showQuote ? '#111827' : '#fff',
+                            border: showQuote ? '1.5px solid #e2e8f0' : 'none',
                             borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem',
                             fontWeight: 700, fontFamily: 'inherit', transition: 'all 0.15s',
                         }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="20 6 9 17 4 12"/>
+                            <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
                         </svg>
-                        Record Payment
+                        {booking.quotedPrice ? 'Update Quote' : 'Set Quote'}
                     </button>
-                )}
-            </div>
 
-            
-            {showQuote && (
+                    {booking.quotedPrice && (
+                        <button onClick={() => { setShowPayment(v => !v); setShowQuote(false); setError(''); }}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+                                background: showPayment ? '#f1f5f9' : '#065f46',
+                                color: showPayment ? '#111827' : '#fff',
+                                border: showPayment ? '1.5px solid #e2e8f0' : 'none',
+                                borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem',
+                                fontWeight: 700, fontFamily: 'inherit', transition: 'all 0.15s',
+                            }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            Record Payment
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {/* QUOTE FORM: Only show if NOT Locked */}
+            {!isLocked && showQuote && (
                 <div style={{ background: '#eff6ff', border: '1.5px solid #bfdbfe', borderRadius: 10, padding: 14, marginTop: 4 }}>
                     <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#6b7280', display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                         Quoted Price (₱) *
@@ -294,8 +300,8 @@ function PaymentPanel({ booking, onUpdated }) {
                 </div>
             )}
 
-            
-            {showPayment && (
+            {/* PAYMENT FORM: Only show if NOT Locked */}
+            {!isLocked && showPayment && (
                 <div style={{ background: '#f0fdf4', border: '1.5px solid #a7f3d0', borderRadius: 10, padding: 14, marginTop: 4 }}>
                     <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#6b7280', display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                         Amount Received (₱) — Quote: {fmtCur(booking.quotedPrice)}
@@ -372,40 +378,169 @@ function BookingDrawer({ booking: initialBooking, onClose, onStatusChange, onBoo
     }
 
     const handlePrint = () => {
-        const w = window.open('', '_blank', 'width=700,height=700');
+        const refNo = String(booking._id).slice(-8).toUpperCase();
+        const issuedOn = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+        const outstanding = Math.max(0, (booking.quotedPrice ?? 0) - (booking.amountPaid ?? 0));
+        
+        const w = window.open('', '_blank', 'width=800,height=900');
+        if (!w) {
+            alert("Please allow popups to print receipts.");
+            return;
+        }
+
         w.document.write(`
-            <html><head><title>Booking #${String(booking._id).slice(-8).toUpperCase()}</title>
-            <style>
-                body { font-family: 'Segoe UI', sans-serif; padding: 32px; color: #111; }
-                h1   { font-size: 1.4rem; margin-bottom: 4px; }
-                .ref { color: #6b7280; font-size: 0.85rem; margin-bottom: 24px; }
-                table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-                td   { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
-                td:first-child { font-weight: 600; color: #374151; width: 36%; }
-                .total { font-size: 1.1rem; font-weight: 800; color: #2563eb; }
-                @media print { body { padding: 16px; } }
-            </style></head><body>
-            <h1>Booking Receipt</h1>
-            <p class="ref">Ref: ${String(booking._id).slice(-8).toUpperCase()} &nbsp;·&nbsp; ${fmt(booking.createdAt)}</p>
-            <table>
-                <tr><td>Status</td><td>${booking.status}</td></tr>
-                <tr><td>Payment</td><td>${booking.paymentStatus || 'Unpaid'}</td></tr>
-                <tr><td>Customer</td><td>${booking.customerName}</td></tr>
-                <tr><td>Email</td><td>${booking.customerEmail || '—'}</td></tr>
-                <tr><td>Phone</td><td>${booking.customerPhone || '—'}</td></tr>
-                <tr><td>Vehicle</td><td>${booking.carId?.title || '—'}</td></tr>
-                ${booking.qty > 1 ? `<tr><td>Quantity</td><td>${booking.qty}</td></tr>` : ''}
-                <tr><td>Pickup Date</td><td>${fmt(booking.startDate)}</td></tr>
-                <tr><td>Return Date</td><td>${fmt(booking.endDate)}</td></tr>
-                <tr><td>Rental Days</td><td>${booking.rentalDays}</td></tr>
-                ${booking.pickupLocation ? `<tr><td>Pickup Location</td><td>${booking.pickupLocation}</td></tr>` : ''}
-                ${booking.quotedPrice    ? `<tr><td>Quoted Price</td><td class="total">${fmtCur(booking.quotedPrice)}</td></tr>` : ''}
-                ${booking.amountPaid > 0 ? `<tr><td>Amount Paid</td><td>${fmtCur(booking.amountPaid)}</td></tr>` : ''}
-                ${booking.paymentMethod  ? `<tr><td>Payment Method</td><td>${booking.paymentMethod}</td></tr>` : ''}
-                ${booking.paymentNotes   ? `<tr><td>Notes</td><td>${booking.paymentNotes}</td></tr>` : ''}
-            </table>
-            <script>window.onload=()=>{window.print();}<\/script>
-            </body></html>`);
+            <html>
+            <head>
+                <title>Receipt - ${refNo}</title>
+                <style>
+                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; color: #0a0a0a; background: #f8fafc; }
+                    .container { width: 100%; max-width: 800px; margin: 0 auto; background: #fff; min-height: 100vh; position: relative; padding-bottom: 80px; }
+                    .header { background: #0f2340; color: #ffffff; padding: 40px; border-top: 4px solid #b08d57; position: relative; }
+                    .brand { font-size: 24px; font-weight: 800; margin: 0; }
+                    .receipt-label { position: absolute; top: 40px; right: 40px; text-align: right; }
+                    .label-text { color: #d4af7a; font-size: 10px; font-weight: 700; letter-spacing: 2px; }
+                    .header-meta { color: #93c5fd; font-size: 12px; margin-top: 5px; }
+                    .header-divider { height: 1px; background: #b08d57; margin: 25px 0 15px; opacity: 0.5; }
+                    .tagline { color: #7dd3fc; font-size: 11px; }
+                    .info-grid { display: flex; padding: 40px; justify-content: space-between; border-bottom: 1px solid #cbd5e1; }
+                    .bill-to h4 { color: #b08d57; font-size: 10px; margin: 0 0 10px; letter-spacing: 1px; }
+                    .customer-name { font-size: 18px; font-weight: 700; margin: 0; }
+                    .customer-contact { color: #64748b; font-size: 12px; margin-top: 5px; }
+                    .meta-table { font-size: 12px; border-collapse: collapse; }
+                    .meta-table td { padding: 4px 0; }
+                    .meta-table .lbl { font-weight: 700; color: #64748b; padding-right: 20px; }
+                    .meta-table .val { text-align: right; font-weight: 600; }
+                    .section-title { padding: 30px 40px 10px; display: flex; align-items: center; }
+                    .accent-bar { width: 4px; height: 16px; background: #1d4ed8; margin-right: 10px; }
+                    .section-title span { font-size: 12px; font-weight: 800; color: #1d4ed8; letter-spacing: 1px; }
+                    .details-table { width: calc(100% - 80px); margin: 10px 40px; border-collapse: collapse; }
+                    .details-table thead { background: #0f2340; color: #fff; }
+                    .details-table th { text-align: left; padding: 12px 15px; font-size: 11px; letter-spacing: 1px; }
+                    .details-table td { padding: 12px 15px; font-size: 13px; border-bottom: 1px solid #cbd5e1; }
+                    .details-table tr:nth-child(even) { background: #f8fafc; }
+                    .details-table .row-lbl { font-weight: 700; color: #334155; width: 35%; }
+                    .summary-container { margin: 10px 40px 30px; }
+                    .summary-table { width: 100%; border-collapse: collapse; }
+                    .summary-table td { padding: 12px 15px; font-size: 13px; border-bottom: 1px solid #cbd5e1; }
+                    .summary-table .row-lbl { font-weight: 700; color: #334155; }
+                    .summary-table tr:nth-child(odd) { background: #f8fafc; }
+                    .summary-table tr:nth-child(even) { background: #ffffff; }
+                    .summary-table .total-row { background: ${outstanding === 0 ? '#14532d' : '#0f2340'} !important; color: #fff; font-weight: 800; }
+                    .summary-table .total-val { color: ${outstanding === 0 ? '#86efac' : '#d4af7a'}; text-align: right; font-size: 15px; }
+                    .signature-section { margin: 80px 40px 120px; display: flex; justify-content: space-between; align-items: flex-end; }
+                    .sig-col { width: 42%; }
+                    .sig-line { border-top: 1px solid #334155; margin-bottom: 8px; }
+                    .sig-label-top { font-size: 9px; font-weight: 800; color: #64748b; margin-bottom: 45px; letter-spacing: 1px; }
+                    .sig-label-bottom { font-size: 11px; font-weight: 400; color: #334155; text-align: center; }
+                    .footer { background: #0f2340; color: #94a3b8; padding: 25px 40px; font-size: 10px; border-top: 2px solid #b08d57; display: flex; justify-content: space-between; position: absolute; bottom: 0; width: 100%; box-sizing: border-box; }
+                    @media print {
+                        body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        .container { box-shadow: none; width: 100%; max-width: none; min-height: 98vh; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1 class="brand">${BRAND.toUpperCase()}</h1>
+                        <div class="receipt-label">
+                            <div class="label-text">OFFICIAL RECEIPT</div>
+                            <div class="header-meta">Ref: ${refNo}</div>
+                            <div class="header-meta">Issued: ${issuedOn}</div>
+                        </div>
+                        <div class="header-divider"></div>
+                        <div class="tagline">Triple R and A Transport Services · Official Rental Receipt</div>
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="bill-to">
+                            <h4>BILL TO</h4>
+                            <p class="customer-name">${booking.customerName}</p>
+                            <p class="customer-contact">${booking.customerEmail || ''} ${booking.customerPhone ? ' · ' + booking.customerPhone : ''}</p>
+                        </div>
+                        <div class="meta-info">
+                            <table class="meta-table">
+                                <tr><td class="lbl">Status</td><td class="val">${booking.status.toUpperCase()}</td></tr>
+                                <tr><td class="lbl">Payment</td><td class="val">${booking.paymentStatus.toUpperCase()}</td></tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="section-title">
+                        <div class="accent-bar"></div>
+                        <span>RENTAL DETAILS</span>
+                    </div>
+
+                    <table class="details-table">
+                        <thead>
+                            <tr><th>DESCRIPTION</th><th>DETAILS</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td class="row-lbl">Vehicle</td><td>${booking.carId?.title || '—'}</td></tr>
+                            ${booking.qty > 1 ? `<tr><td class="row-lbl">Quantity</td><td>${booking.qty} unit(s)</td></tr>` : ''}
+                            <tr><td class="row-lbl">Pickup Date</td><td>${fmt(booking.startDate)}</td></tr>
+                            <tr><td class="row-lbl">Return Date</td><td>${fmt(booking.endDate)}</td></tr>
+                            <tr><td class="row-lbl">Duration</td><td>${booking.rentalDays} day${booking.rentalDays !== 1 ? 's' : ''}</td></tr>
+                        </tbody>
+                    </table>
+
+                    <div class="section-title">
+                        <div class="accent-bar"></div>
+                        <span>PAYMENT SUMMARY</span>
+                    </div>
+
+                    <div class="summary-container">
+                        <table class="summary-table">
+                            <tr>
+                                <td class="row-lbl">Quoted Price</td>
+                                <td style="text-align:right">PHP ${Number(booking.quotedPrice || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})}</td>
+                            </tr>
+                            <tr>
+                                <td class="row-lbl">Amount Paid</td>
+                                <td style="text-align:right">PHP ${Number(booking.amountPaid || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})}</td>
+                            </tr>
+                            <tr class="total-row">
+                                <td class="row-lbl" style="color:white">BALANCE OUTSTANDING</td>
+                                <td class="total-val">PHP ${Number(outstanding).toLocaleString('en-PH', {minimumFractionDigits: 2})}</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div class="signature-section">
+                        <div class="sig-col">
+                            <div class="sig-label-top">PREPARED BY</div>
+                            <div class="sig-line"></div>
+                            <div class="sig-label-bottom">Authorised Signature</div>
+                        </div>
+                        <div class="sig-col">
+                            <div class="sig-label-top">RECEIVED BY</div>
+                            <div class="sig-line"></div>
+                            <div class="sig-label-bottom">Customer Signature & Date</div>
+                        </div>
+                    </div>
+
+                    <div class="footer">
+                        <div>
+                            <strong>${BRAND}</strong><br/>
+                            Official electronic receipt. Thank you for your business.
+                        </div>
+                        <div style="text-align:right">
+                            Ref: ${refNo}<br/>
+                            Generated: ${new Date().toLocaleString('en-PH')}
+                        </div>
+                    </div>
+                </div>
+                <script>
+                    window.onload = () => {
+                        setTimeout(() => {
+                            window.print();
+                            window.onafterprint = () => window.close();
+                        }, 500);
+                    };
+                </script>
+            </body>
+            </html>
+        `);
         w.document.close();
     };
 
@@ -414,24 +549,27 @@ function BookingDrawer({ booking: initialBooking, onClose, onStatusChange, onBoo
             <div className="bp-drawer-overlay" onClick={onClose}>
                 <div className="bp-drawer" onClick={e => e.stopPropagation()}>
 
-                    
                     <div className="bp-drawer__header">
                         <div>
                             <h3>Booking Details</h3>
                             <p className="bp-drawer__ref">#{String(booking._id).slice(-8).toUpperCase()}</p>
                         </div>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            <button className="bp-drawer__action-btn" onClick={handlePrint} title="Print receipt">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <polyline points="6 9 6 2 18 2 18 9"/>
-                                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                                    <rect x="6" y="14" width="12" height="8"/>
-                                </svg>
-                                Print
-                            </button>
-
                             
+                            {/* LOGIC: Print receipt only for Completed bookings */}
+                            {booking.status === 'Completed' && (
+                                <button className="bp-drawer__action-btn" onClick={handlePrint} title="Print receipt">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <polyline points="6 9 6 2 18 2 18 9"/>
+                                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                                        <rect x="6" y="14" width="12" height="8"/>
+                                    </svg>
+                                    Print
+                                </button>
+                            )}
+
                             <button
+                                className="bp-drawer-delete-trigger"
                                 onClick={() => setConfirm({ type: 'delete' })}
                                 disabled={deleting}
                                 title="Permanently delete this booking"
@@ -461,7 +599,6 @@ function BookingDrawer({ booking: initialBooking, onClose, onStatusChange, onBoo
                         </div>
                     </div>
 
-                    
                     <div className={`bp-drawer__status-banner bp-drawer__status-banner--${booking.status.toLowerCase()}`}>
                         <StatusBadge status={booking.status} />
                         <PaymentPill status={booking.paymentStatus || 'Unpaid'} />
@@ -479,9 +616,7 @@ function BookingDrawer({ booking: initialBooking, onClose, onStatusChange, onBoo
                         )}
                     </div>
 
-                    
                     <div className="bp-drawer__body">
-
                         <PaymentPanel
                             booking={booking}
                             onUpdated={(updated) => { setBooking(updated); onBookingUpdate(updated); }}
@@ -551,7 +686,6 @@ function BookingDrawer({ booking: initialBooking, onClose, onStatusChange, onBoo
                 </div>
             </div>
 
-            
             {confirm?.type === 'status' && (
                 <ConfirmDialog
                     message={`Change status to "${confirm.status}"?`}
@@ -563,11 +697,10 @@ function BookingDrawer({ booking: initialBooking, onClose, onStatusChange, onBoo
                 />
             )}
 
-            
             {confirm?.type === 'delete' && (
                 <ConfirmDialog
                     title="Delete this booking?"
-                    message={`Booking #${String(booking._id).slice(-8).toUpperCase()} for ${booking.customerName} will be permanently removed from the database. This cannot be undone.`}
+                    message={`Booking #${String(booking._id).slice(-8).toUpperCase()} for ${booking.customerName} will be permanently removed. This cannot be undone.`}
                     subMessage={DELETE_STOCK_CONTEXT[booking.status]}
                     confirmLabel="Delete Permanently"
                     confirmClass="bp-confirm__ok--danger"
@@ -579,7 +712,6 @@ function BookingDrawer({ booking: initialBooking, onClose, onStatusChange, onBoo
         </>
     );
 }
-
 
 function exportCSV(bookings) {
     const headers = ['Ref','Customer','Email','Phone','Vehicle','Qty','Start','End','Days','Location','Quoted Price','Amount Paid','Outstanding','Payment Status','Payment Method','Booking Status','Booked On'];
@@ -612,7 +744,6 @@ function exportCSV(bookings) {
     URL.revokeObjectURL(url);
 }
 
-
 function Toast({ toast, onDismiss }) {
     if (!toast) return null;
     const isErr = toast.type === 'error';
@@ -642,18 +773,16 @@ function Toast({ toast, onDismiss }) {
     );
 }
 
-
-
 export default function BookingsPage() {
     const [bookings, setBookings] = useState([]);
     const [loading,  setLoading]  = useState(true);
-    const [error,    setError]    = useState('');
-    const [filter,   setFilter]   = useState('All');
-    const [search,   setSearch]   = useState('');
-    const [sort,     setSort]     = useState('newest');
+    const [error,     setError]    = useState('');
+    const [filter,    setFilter]   = useState('All');
+    const [search,    setSearch]   = useState('');
+    const [sort,      setSort]     = useState('newest');
     const [selected, setSelected] = useState(null);
-    const [page,     setPage]     = useState(1);
-    const [toast,    setToast]    = useState(null); 
+    const [page,      setPage]     = useState(1);
+    const [toast,     setToast]    = useState(null); 
     const searchRef  = useRef(null);
     const toastTimer = useRef(null);
 
@@ -679,8 +808,6 @@ export default function BookingsPage() {
         window.addEventListener('keydown', h);
         return () => window.removeEventListener('keydown', h);
     }, []);
-
-    
 
     async function handleStatusChange(id, newStatus) {
         try {
@@ -711,8 +838,6 @@ export default function BookingsPage() {
             throw err; 
         }
     }
-
-    
 
     const filtered = bookings
         .filter(b => filter === 'All' || b.status === filter)
@@ -748,7 +873,6 @@ export default function BookingsPage() {
         <div className="bp-root">
             <Toast toast={toast} onDismiss={() => setToast(null)} />
 
-            
             <div className="bp-tabs">
                 {STATUS_FILTERS.map(s => (
                     <button key={s} className={`bp-tab${filter === s ? ' bp-tab--active' : ''}`} onClick={() => changeFilter(s)}>
@@ -757,7 +881,6 @@ export default function BookingsPage() {
                 ))}
             </div>
 
-            
             <div className="bp-toolbar">
                 <div className="bp-search-wrap">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -792,7 +915,6 @@ export default function BookingsPage() {
 
             {error && <div className="bp-banner bp-banner--error">{error}</div>}
 
-            
             <div className="bp-table-wrap">
                 <table className="bp-table">
                     <thead>
@@ -821,7 +943,6 @@ export default function BookingsPage() {
                                         <polyline points="14 2 14 8 20 8"/>
                                     </svg>
                                     <p style={{ margin: 0, fontWeight: 600 }}>No bookings found</p>
-                                    {search && <p style={{ margin: '4px 0 0', fontSize: '0.82rem' }}>Try a different search term</p>}
                                 </td>
                             </tr>
                         ) : paginated.map((b, i) => (
@@ -856,7 +977,6 @@ export default function BookingsPage() {
                                 <td><StatusBadge status={b.status} /></td>
                                 <td><p className="bp-booked">{fmt(b.createdAt)}</p></td>
 
-                            
                                 <td onClick={e => e.stopPropagation()}>
                                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                                         <button className="bp-view-btn" onClick={() => setSelected(b)}>
@@ -864,20 +984,16 @@ export default function BookingsPage() {
                                         </button>
                                         <button
                                             className="bp-inline-delete"
-                                            title="Delete booking"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 setSelected(b);
-                                               
                                                 setTimeout(() => {
                                                     document.querySelector('.bp-drawer-delete-trigger')?.click();
                                                 }, 50);
                                             }}
                                         >
                                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                <polyline points="3 6 5 6 21 6"/>
-                                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                                                <path d="M10 11v6M14 11v6"/>
+                                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
                                             </svg>
                                         </button>
                                     </div>
@@ -888,10 +1004,9 @@ export default function BookingsPage() {
                 </table>
             </div>
 
-            
             {totalPages > 1 && (
                 <div className="bp-pagination">
-                    <button className="bp-pg-btn" onClick={() => setPage(1)}           disabled={page === 1}>«</button>
+                    <button className="bp-pg-btn" onClick={() => setPage(1)} disabled={page === 1}>«</button>
                     <button className="bp-pg-btn" onClick={() => setPage(p => p - 1)} disabled={page === 1}>‹ Prev</button>
                     <div className="bp-pg-numbers">
                         {Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -909,11 +1024,9 @@ export default function BookingsPage() {
                     </div>
                     <button className="bp-pg-btn" onClick={() => setPage(p => p + 1)} disabled={page === totalPages}>Next ›</button>
                     <button className="bp-pg-btn" onClick={() => setPage(totalPages)} disabled={page === totalPages}>»</button>
-                    <span className="bp-pg-info">{(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, filtered.length)} of {filtered.length}</span>
                 </div>
             )}
 
-            
             {selected && (
                 <BookingDrawer
                     booking={selected}
@@ -924,7 +1037,6 @@ export default function BookingsPage() {
                 />
             )}
 
-            
             <style>{`
                 .bp-inline-delete {
                     width: 28px; height: 28px;

@@ -16,6 +16,19 @@ function Contact() {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError]           = useState(null);
 
+    // --- Strict Validation: Only updates state if input is non-numeric ---
+    const handleNameChange = (e) => {
+        const value = e.target.value;
+        // Regex: Allows only letters, spaces, hyphens, and dots.
+        const nameRegex = /^[a-zA-Z\s.\-]*$/;
+        
+        // If the new value matches the regex, update the state.
+        // If it contains a number, the state remains as it was.
+        if (nameRegex.test(value)) {
+            setFormData({ ...formData, name: value });
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSubmitting(true);
@@ -59,11 +72,12 @@ function Contact() {
                         </div>
                     ) : (
                         <form onSubmit={handleSubmit} className="contact-form">
+                            {/* General API error display */}
                             {error && (
                                 <div style={{
                                     background: '#fee2e2', color: '#b91c1c',
                                     border: '1px solid #fca5a5', borderRadius: 8,
-                                    padding: '10px 14px', fontSize: '0.875rem', marginBottom: 4,
+                                    padding: '10px 14px', fontSize: '0.875rem', marginBottom: 15
                                 }}>
                                     {error}
                                 </div>
@@ -76,7 +90,7 @@ function Contact() {
                                     required
                                     placeholder="Your Name"
                                     value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    onChange={handleNameChange}
                                 />
                             </div>
 
@@ -128,7 +142,7 @@ function Contact() {
                     <div className="map-wrapper">
                         <iframe
                             title="Office Location"
-                            src="https://maps.google.com/maps?q=Ben-Lor Realty Trading & Publishing Corp.&z=15&output=embed"
+                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3861.123456789!2d120.984!3d14.599!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTTCsDM1JzU2LjQiTiAxMjDCsDU5JzAyLjQiRQ!5e0!3m2!1sen!2sph!4v1234567890"
                             width="100%"
                             height="450"
                             style={{ border: 0 }}

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './Adminpages.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-const CAR_TYPES    = ['Sedan', 'SUV', 'Van', 'Bus', 'Truck', 'Coupe', 'Hatchback', 'Motorcycle'];
+const CAR_TYPES    = ['Sedan', 'SUV', 'Van', 'Bus', 'Coaster', 'MPV'];
 
 function getToken() {
     return localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');

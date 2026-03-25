@@ -61,11 +61,28 @@ const Icons = {
             <polyline points="2 17 6 14 10 17 14 12 18 10 22 10"/>
         </svg>
     ),
+    // Peso sign icon: ₱
     Revenue: () => (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="1" x2="12" y2="23"/>
-            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-        </svg>
+<svg
+  width="22"
+  height="22"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  strokeWidth="2"
+  strokeLinecap="round"
+  strokeLinejoin="round"
+>
+  {/* Vertical stem */}
+  <path d="M8 21V3" />
+
+  {/* Rounded P bowl */}
+  <path d="M8 3h6a4.5 4.5 0 0 1 0 9H8" />
+
+  {/* Longer, aligned peso bars */}
+  <path d="M5 6h13" />
+  <path d="M5 9h13" />
+</svg>
     ),
     Car: () => (
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -551,7 +568,6 @@ export default function AdminDashboard() {
                             { label: 'Completed', val: data.bookingStats.completed, cls: 'completed' },
                         ].map(s => (
                             <div key={s.label} className="ad-sidebar__mini-row">
-                                {/* Theme consistent green for active dot */}
                                 <span className={`ad-sidebar__mini-dot ad-sidebar__mini-dot--${s.cls}`} 
                                       style={s.cls === 'active' ? { backgroundColor: '#10b981' } : {}} />
                                 <span className="ad-sidebar__mini-label">{s.label}</span>

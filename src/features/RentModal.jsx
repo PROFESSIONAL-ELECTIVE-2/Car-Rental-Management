@@ -346,6 +346,9 @@ function AddVehiclePanel({ allCars, cartCarIds, onAdd }) {
     );
 }
 
+// Regex: letters (including accented), spaces, hyphens, apostrophes, and periods
+const NAME_REGEX = /^[a-zA-ZÀ-ÖØ-öø-ÿ\s\-'.]+$/;
+
 function RentModal({ car, allCars = [], onClose, onConfirm }) {
     const [customer, setCustomer] = useState({
         fullName: '',
@@ -389,8 +392,15 @@ function RentModal({ car, allCars = [], onClose, onConfirm }) {
     }, 0);
     const totalVehicles = cart.reduce((sum, i) => sum + i.qty, 0);
 
+    const isNameValid = customer.fullName.length === 0 || NAME_REGEX.test(customer.fullName);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (!NAME_REGEX.test(customer.fullName)) {
+            alert('Please enter a valid name (letters, spaces, hyphens, and apostrophes only).');
+            return;
+        }
 
         for (let i = 0; i < cart.length; i++) {
             const item = cart[i];
@@ -491,10 +501,25 @@ function RentModal({ car, allCars = [], onClose, onConfirm }) {
                         <form onSubmit={handleSubmit} className="rental-form">
                             <div className="form-group">
                                 <label>Full Name</label>
-                                <input type="text" required placeholder="Juan Dela Cruz"
+                                <input
+                                    type="text"
+                                    required
+                                    placeholder="Juan Dela Cruz"
                                     value={customer.fullName}
-                                    onChange={e => setCustomer(p => ({ ...p, fullName: e.target.value }))}
-                                    disabled={submitting} />
+                                    onChange={e => {
+                                        // Strip out any characters that aren't letters, spaces, hyphens, apostrophes, or periods
+                                        const raw = e.target.value.replace(/[^a-zA-ZÀ-ÖØ-öø-ÿ\s\-'.]/g, '');
+                                        setCustomer(p => ({ ...p, fullName: raw }));
+                                    }}
+                                    pattern="^[a-zA-ZÀ-ÖØ-öø-ÿ\s\-'.]+$"
+                                    title="Name may only contain letters, spaces, hyphens, and apostrophes"
+                                    disabled={submitting}
+                                />
+                                {!isNameValid && (
+                                    <span className="field-error">
+                                        Name may only contain letters, spaces, hyphens, and apostrophes
+                                    </span>
+                                )}
                             </div>
 
                             <div className="form-group">

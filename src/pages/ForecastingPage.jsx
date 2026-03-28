@@ -116,11 +116,12 @@ const Icons = {
         </svg>
     ),
     Tag: () => (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="1" x2="12" y2="23"/>
-            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-        </svg>
-    ),
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {/* This draws a standard price tag shape instead of a $ sign */}
+        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+        <line x1="7" y1="7" x2="7.01" y2="7"></line>
+    </svg>
+),
     TrendUp: () => (
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
@@ -357,9 +358,9 @@ function PricingSuggestions({ outlook, avgByType }) {
                                     ×{mult.toFixed(2)}
                                 </p>
                                 {suggested > 0 && (
-                                    <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#6b7280' }}>
-                                        ~{fmtPesoShort(suggested)}/booking
-                                    </p>
+                                  <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#6b7280' }}>
+                                   ~{fmtPesoShort(suggested)}/booking  {/* This will now show ₱ */}
+                                 </p>
                                 )}
                                 <p style={{ margin: '2px 0 0', fontSize: '0.65rem', color: t.color, fontWeight: 700 }}>
                                     {mult > 1

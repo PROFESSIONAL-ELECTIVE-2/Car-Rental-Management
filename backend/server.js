@@ -499,6 +499,26 @@ function buildReplyEmail(msg, replySubject, replyBody) {
 // sendEmail — now accepts optional attachments array
 // ─────────────────────────────────────────────────────────────────────────────
 
+function buildExtensionEmail(b, t, extraDays, reason) {
+    return {
+        subject: `Booking Extended — +${extraDays} Day${extraDays !== 1 ? 's' : ''} | ${BRAND}`,
+        html: htmlShell('Your Rental Has Been Extended', `<p>Hi <strong>${b.customerName}</strong>,</p>
+<p>Your rental has been <strong>extended by ${extraDays} day${extraDays !== 1 ? 's' : ''}</strong>.</p>
+<table>
+<tr><td>Reference</td><td>#${String(b._id).slice(-8).toUpperCase()}</td></tr>
+<tr><td>Vehicle</td><td>${t}</td></tr>
+${(b.qty??1)>1?`<tr><td>Quantity</td><td>${b.qty} unit(s)</td></tr>`:''}
+<tr><td>Extended By</td><td>+${extraDays} day${extraDays!==1?'s':''}</td></tr>
+<tr><td>New Return Date</td><td>${fmtDate(b.endDate)}</td></tr>
+<tr><td>Total Rental Days</td><td>${b.rentalDays} day${b.rentalDays!==1?'s':''}</td></tr>
+${reason?`<tr><td>Reason</td><td>${reason}</td></tr>`:''}
+${b.quotedPrice?`<tr class="tr"><td>Updated Quote</td><td>${fmtPeso(b.quotedPrice)}</td></tr>`:''}
+</table>
+<p>If you have any questions, please contact our support team.</p>
+<p>Warm regards,<br/><strong>${BRAND} Team</strong></p>`, '#16a34a'),
+    };
+}
+
 async function sendEmail(to, subject, html, attachments = []) {
     if (!to || !process.env.EMAIL_USER) return;
     try {
@@ -931,6 +951,60 @@ app.delete('/api/admin/bookings/:id', requireAdmin, async (req, res) => {
         console.log(`Booking deleted: ${booking._id} (was ${booking.status})`);
         res.json({ message: 'Booking deleted successfully.', deletedId: booking._id });
     } catch (err) { await session.abortTransaction(); session.endSession(); console.error('Delete booking error:', err); res.status(500).json({ message: 'Server Error: Could not delete booking.' }); }
+});
+
+app.put('/api/admin/bookings/:id/extend', requireAdmin, async (req, res) => {
+    const { extraDays, reason } = req.body;
+    const extra = Number(extraDays);
+ 
+    if (!extra || isNaN(extra) || extra < 1 || extra > 365)
+        return res.status(400).json({ message: 'extraDays must be a whole number between 1 and 365.' });
+ 
+    try {
+        const booking = await Booking.findById(req.params.id).populate('carId', 'title type dailyRate');
+        if (!booking) return res.status(404).json({ message: 'Booking not found.' });
+ 
+        if (!['Pending', 'Active'].includes(booking.status))
+            return res.status(400).json({
+                message: `Cannot extend a "${booking.status}" booking. Only Pending or Active bookings can be extended.`,
+            });
+ 
+        // Extend end date
+        const newEnd = new Date(booking.endDate);
+        newEnd.setDate(newEnd.getDate() + extra);
+        booking.endDate    = newEnd;
+        booking.rentalDays = (booking.rentalDays || 1) + extra;
+ 
+        // Recalculate quoted price if a daily rate exists
+        const dailyRate = booking.carId?.dailyRate ?? 0;
+        if (dailyRate > 0 && booking.quotedPrice != null) {
+            const extraCost     = dailyRate * (booking.qty ?? 1) * extra;
+            booking.quotedPrice = (booking.quotedPrice || 0) + extraCost;
+            booking.totalCost   = booking.quotedPrice;
+        }
+ 
+        // Append extension note to paymentNotes
+        const note = `[Extension +${extra}d${reason ? ': ' + reason.trim() : ''}]`;
+        booking.paymentNotes = booking.paymentNotes
+            ? `${booking.paymentNotes} ${note}`
+            : note;
+ 
+        await booking.save();
+ 
+        const populated = await Booking.findById(booking._id).populate('carId', 'title type image');
+ 
+        if (booking.customerEmail) {
+            const carTitle = populated.carId?.title || 'your vehicle';
+            const { subject, html } = buildExtensionEmail(booking, carTitle, extra, reason);
+            sendEmail(booking.customerEmail, subject, html);
+        }
+ 
+        console.log(`Booking ${booking._id} extended +${extra}d → ${newEnd.toDateString()}`);
+        res.json({ message: `Booking extended by ${extra} day(s).`, booking: populated });
+    } catch (err) {
+        console.error('Extend booking error:', err);
+        res.status(500).json({ message: 'Server Error: Could not extend booking.' });
+    }
 });
 
 app.get('/api/admin/cars', requireAdmin, async (req, res) => {

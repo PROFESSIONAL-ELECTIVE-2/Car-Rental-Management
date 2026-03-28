@@ -1082,7 +1082,7 @@ export default function BookingsPage() {
                                 <td onClick={e => e.stopPropagation()}>
                                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                                         <button className="bp-view-btn" onClick={() => setSelected(b)}>
-                                            View →
+                                            View 
                                         </button>
                                         <button
                                             className="bp-inline-delete"

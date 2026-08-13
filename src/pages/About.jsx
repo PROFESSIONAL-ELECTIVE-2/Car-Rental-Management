@@ -11,7 +11,7 @@ function About() {
             <section className="hero-section about-hero">
                 <div className="hero-overlay">
                     <div className="hero-content">
-                        <span className="hero-subtitle">ESTABLISHED 2014</span>
+                        <span className="hero-subtitle">ESTABLISHED 2024</span>
                         <h1>Our Journey at Triple R and A</h1>
                         <p>
                            From a small local fleet to a premier rental service, we've spent the last decade perfecting the art of the journey.
@@ -79,7 +79,7 @@ function About() {
                         <div className="block-label">BENEFITS</div>
                         <h2>Why Choose Us?</h2>
                         <ul className="benefits-list-simple">
-                            <li><strong>Wide Range:</strong> From city cars to rugged off-roaders.</li>
+                            <li><strong>Wide Range:</strong> From city cars to corporate vehicles.</li>
                             <li><strong>Fair Pricing:</strong> Competitive rates for long-term rentals.</li>
                             <li><strong>Convenience:</strong> Multiple pickup points and delivery.</li>
                             <li><strong>Expertise:</strong> Real humans ready to help you 24/7.</li>

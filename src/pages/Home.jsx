@@ -136,7 +136,7 @@ function Home() {
                     </div>
                     <div className="info-card">
                         <h3>Flexible Booking Options</h3>
-                        <p>Choose from daily, weekly, or monthly rental plans tailored to your transportation needs.</p>
+                        <p>Choose from daily, weekly, monthly, or yearly rental plans tailored to your transportation needs.</p>
                     </div>
                     <div className="info-card">
                         <h3>Quality Customer Support</h3>

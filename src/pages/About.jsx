@@ -14,8 +14,7 @@ function About() {
                         <span className="hero-subtitle">ESTABLISHED 2024</span>
                         <h1>Our Journey at Triple R and A</h1>
                         <p>
-                           From a small local fleet to a premier rental service, we've spent the last decade perfecting the art of the journey.
-                         <br />We don't just rent cars; we provide the keys to your next adventure.
+                          At Triple R & A Transport Services, your safety and peace of mind inspire every mile. From our humble beginnings as a local fleet to the cared-for vehicles we offer today, we have spent more than a decade earning your trust, so we are always glad to hand you the keys to your next great adventure.
                         </p>
                     </div>
                 </div>
@@ -73,7 +72,9 @@ function About() {
                 </div>
             </section>
 
-            <section className="split-section">
+            
+
+            <section className="info-section testimonials-bg">
                 <div className="split-content">
                     <div className="why-us-block">
                         <div className="block-label">BENEFITS</div>
@@ -94,22 +95,6 @@ function About() {
                             we are here every step of the way.
                         </p>
                     </div>
-                </div>
-            </section>
-
-            <section className="info-section testimonials-bg">
-                <div className="section-header">
-                    <h2>Customer Voices</h2>
-                </div>
-                <div className="info-grid">
-                    <blockquote className="info-card testimonial">
-                        <p>"Triple R and A made my trip so much easier. The booking process was simple, and the car was in excellent condition."</p>
-                        <cite>— Jane Doe</cite>
-                    </blockquote>
-                    <blockquote className="info-card testimonial">
-                        <p>"Great service and affordable rates. I will definitely use Triple R and A again for my next trip."</p>
-                        <cite>— John Smith</cite>
-                    </blockquote>
                 </div>
             </section>
 
